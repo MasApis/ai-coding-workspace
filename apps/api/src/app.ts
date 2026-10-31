@@ -7,6 +7,7 @@ import { providerRoutes } from "./routes/providers.js";
 import { aiRoutes } from "./routes/ai.js";
 import { chatRoutes } from "./routes/chat.js";
 import { conversationRoutes } from "./routes/conversations.js";
+import { designRoutes } from "./routes/design.js";
 import { documentRoutes } from "./routes/documents.js";
 import { exportRoutes } from "./routes/exports.js";
 import { planningRoutes } from "./routes/planning.js";
@@ -38,6 +39,7 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
   await documentRoutes(app, db);
   await conversationRoutes(app, db);
   await chatRoutes(app, db, gatewayKey);
+  await designRoutes(app, db, gatewayKey);
   await exportRoutes(app, db);
   await planningRoutes(app, db, gatewayKey);
 
