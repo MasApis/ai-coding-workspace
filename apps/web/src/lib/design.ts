@@ -71,8 +71,52 @@ export async function generateDesignStream(
   }
 }
 
+export interface PrototypeVersion {
+  versionNo: number;
+  specVersionNo: number | null;
+  createdAt: string;
+}
+
+export async function generatePrototype(projectId: string): Promise<PrototypeVersion> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/design/prototype`, { method: "POST" });
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Tidak dapat menghubungi server lokal.");
+  }
+  const body = (await res.json()) as { data?: PrototypeVersion; error?: { code: string; message: string } };
+  if (!res.ok || body.error) {
+    throw new ApiError(res.status, body.error?.code ?? "UNKNOWN_ERROR", body.error?.message ?? "Pembuatan prototipe gagal.");
+  }
+  return body.data as PrototypeVersion;
+}
+
+export async function getLatestPrototype(projectId: string): Promise<PrototypeVersion> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/design/prototype`);
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Tidak dapat menghubungi server lokal.");
+  }
+  const body = (await res.json()) as { data?: PrototypeVersion; error?: { code: string; message: string } };
+  if (!res.ok || body.error) {
+    throw new ApiError(res.status, body.error?.code ?? "UNKNOWN_ERROR", body.error?.message ?? "Prototipe tidak tersedia.");
+  }
+  return body.data as PrototypeVersion;
+}
+
+export function prototypeDownloadUrl(projectId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/design/prototype/download`;
+}
+
+export async function fetchPrototypeHtml(projectId: string, signal?: AbortSignal): Promise<string> {
+  const res = await fetch(prototypeDownloadUrl(projectId), { signal });
+  if (!res.ok) throw new ApiError(res.status, "UNKNOWN_ERROR", "Prototipe tidak dapat dimuat.");
+  return res.text();
+}
 export function friendlyDesignError(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.code === "DOCUMENT_NOT_FOUND") return "Belum ada prototipe. Buat dulu.";
     if (err.code === "NEED_APPROVED_BASELINE") return "Butuh PRD yang sudah disetujui. Setujui PRD dulu di Perencanaan.";
     return err.message;
   }

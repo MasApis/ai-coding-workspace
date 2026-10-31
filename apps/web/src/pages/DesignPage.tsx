@@ -6,7 +6,7 @@ import { Badge } from "../components/Badge.js";
 import { Button } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { renderMarkdown } from "../lib/markdown.js";
-import { friendlyDesignError, generateDesignStream, parseDesignSections } from "../lib/design.js";
+import { fetchPrototypeHtml, friendlyDesignError, generateDesignStream, generatePrototype, getLatestPrototype, parseDesignSections, prototypeDownloadUrl } from "../lib/design.js";
 import { listDocuments } from "../lib/documents.js";
 import { ApiError } from "../lib/api.js";
 import { BackToProjects, PageHeader } from "./PageBits.js";
@@ -17,6 +17,7 @@ const TABS = [
   { id: "screens", label: "Layar", sections: ["Layar", "Komponen"] },
   { id: "tokens", label: "Token", sections: ["Token Desain"] },
   { id: "preview", label: "Pratinjau", sections: [] },
+  { id: "prototype", label: "Prototipe", sections: [] },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -28,12 +29,41 @@ export function DesignPage() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [protoHtml, setProtoHtml] = useState<string | null>(null);
+  const [protoVersion, setProtoVersion] = useState<number | null>(null);
+  const [protoError, setProtoError] = useState<string | null>(null);
+  const [protoLoading, setProtoLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const docsQuery = useQuery({ queryKey: ["documents", projectId], queryFn: () => listDocuments(projectId ?? ""), enabled: !!projectId });
   const docs = docsQuery.data ?? [];
   const design = docs.find((d) => d.type === "DESIGN_SPEC") ?? null;
   const sections = design?.contentMd ? parseDesignSections(design.contentMd) : new Map<string, string>();
+
+  async function handlePrototype(regenerate: boolean): Promise<void> {
+    if (!projectId) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setProtoLoading(true);
+    setProtoError(null);
+    try {
+      if (regenerate) {
+        await generatePrototype(projectId);
+      }
+      const latest = await getLatestPrototype(projectId);
+      setProtoVersion(latest.versionNo);
+      if (!controller.signal.aborted) {
+        setProtoHtml(await fetchPrototypeHtml(projectId, controller.signal));
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setProtoError(err instanceof Error ? friendlyDesignError(err) : "Prototipe gagal dimuat.");
+      }
+    } finally {
+      setProtoLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }
 
   async function handleGenerate(): Promise<void> {
     if (!projectId || generating) return;
@@ -132,6 +162,43 @@ export function DesignPage() {
                     className="max-w-none text-sm [&_code]:rounded [&_code]:bg-canvas [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_p]:my-2"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(design.contentMd ?? "") }}
                   />
+                ) : tab === "prototype" ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button onClick={() => void handlePrototype(false)} disabled={protoLoading || !design}>
+                        {protoLoading ? "Memuat…" : "Tampilkan prototipe"}
+                      </Button>
+                      <Button variant="secondary" onClick={() => void handlePrototype(true)} disabled={protoLoading || !design}>
+                        Generate ulang
+                      </Button>
+                      {protoVersion !== null && <Badge variant="accent">v{protoVersion}</Badge>}
+                      {projectId && (
+                        <a
+                          href={prototypeDownloadUrl(projectId)}
+                          download
+                          className="inline-flex min-h-[40px] items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas"
+                        >
+                          Unduh index.html
+                        </a>
+                      )}
+                    </div>
+                    {protoError && (
+                      <Alert variant="error" title="Prototipe gagal">
+                        {protoError}
+                      </Alert>
+                    )}
+                    {protoHtml !== null && (
+                      <iframe
+                        title="Pratinjau prototipe (sandbox)"
+                        sandbox=""
+                        srcDoc={protoHtml}
+                        className="h-[480px] w-full rounded-control border border-line bg-white"
+                      />
+                    )}
+                    <p className="text-xs text-ink-soft">
+                      Dijalankan terisolasi tanpa skrip dan tanpa akses origin aplikasi.
+                    </p>
+                  </div>
                 ) : tabSections.length === 0 ? (
                   <p className="text-sm text-ink-soft">
                     Bagian ini kosong. Dokumen mungkin ditulis manual tanpa heading standar — generate ulang untuk struktur baku.

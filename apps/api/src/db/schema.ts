@@ -249,3 +249,20 @@ export const exports = sqliteTable(
   },
   (t) => [index("exports_project_id_idx").on(t.projectId)],
 );
+
+export const designVersions = sqliteTable(
+  "design_versions",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id),
+    versionNo: integer("version_no").notNull(),
+    specMd: text("spec_md").notNull(),
+    prototypePath: text("prototype_path"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [index("design_versions_project_id_idx").on(t.projectId)],
+);

@@ -37,6 +37,7 @@ describe("database bootstrap", () => {
         "ai_requests",
         "conversations",
         "decisions",
+        "design_versions",
         "document_versions",
         "documents",
         "exports",

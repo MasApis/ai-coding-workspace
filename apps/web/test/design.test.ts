@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateDesignStream, parseDesignSections } from "../src/lib/design.js";
+import { fetchPrototypeHtml, generateDesignStream, generatePrototype, getLatestPrototype, parseDesignSections } from "../src/lib/design.js";
 
 function sseResponse(chunks: string[]): Response {
   const encoder = new TextEncoder();
@@ -15,6 +15,13 @@ function sseResponse(chunks: string[]): Response {
 beforeEach(() => {
   vi.unstubAllGlobals();
 });
+
+function mockFetchOnce(body: unknown, status = 200): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })),
+  );
+}
 
 describe("design sections parser", () => {
   it("splits ## sections and keeps intro", () => {
@@ -66,5 +73,20 @@ describe("design client", () => {
       onDone: () => {},
     });
     expect(failure).toEqual({ code: "NEED_APPROVED_BASELINE", message: "butuh PRD" });
+  });
+
+  it("creates and fetches prototypes", async () => {
+    mockFetchOnce({ data: { versionNo: 1 } }, 201);
+    const created = await generatePrototype("p1");
+    expect(created.versionNo).toBe(1);
+
+    mockFetchOnce({ data: { versionNo: 2, specVersionNo: 1 } });
+    const latest = await getLatestPrototype("p1");
+    expect(latest.versionNo).toBe(2);
+  });
+
+  it("fetches prototype html for sandboxed preview", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html></html>", { status: 200 })));
+    expect(await fetchPrototypeHtml("p1")).toBe("<html></html>");
   });
 });

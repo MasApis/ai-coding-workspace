@@ -7,6 +7,7 @@ import { GatewayError, gatewayHttpStatus } from "../ai/errors.js";
 import { HttpError, errorBody } from "../http/errors.js";
 import { getProject } from "../services/projectService.js";
 import { generateDesignSpec } from "../services/design/designService.js";
+import { generatePrototype, getLatestPrototype, readPrototypeFile } from "../services/design/prototype.js";
 
 function sendError(reply: FastifyReply, err: unknown): void {
   if (err instanceof GatewayError) {
@@ -25,6 +26,35 @@ function sendError(reply: FastifyReply, err: unknown): void {
 }
 
 export async function designRoutes(app: FastifyInstance, db: AppDatabase, key: Buffer): Promise<void> {
+  app.get("/api/projects/:id/design/prototype", async (request, reply) => {
+    try {
+      return reply.send({ data: await getLatestPrototype(db, (request.params as { id: string }).id) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.post("/api/projects/:id/design/prototype", async (request, reply) => {
+    try {
+      return reply.code(201).send({ data: await generatePrototype(db, (request.params as { id: string }).id) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/api/projects/:id/design/prototype/download", async (request, reply) => {
+    try {
+      const latest = await getLatestPrototype(db, (request.params as { id: string }).id);
+      const buffer = readPrototypeFile(latest.relativePath);
+      reply.header("Content-Type", "text/html; charset=utf-8");
+      reply.header("Content-Security-Policy", "sandbox");
+      reply.header("Content-Disposition", 'attachment; filename="index.html"');
+      return reply.send(buffer);
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
   app.post("/api/projects/:id/design/generate/stream", async (request, reply) => {
     let parsed;
     try {
