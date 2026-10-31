@@ -14,7 +14,9 @@ export function Header({ onOpenNav, menuButtonRef }: { onOpenNav: () => void; me
       >
         ☰
       </button>
-      <div className="min-w-0 flex-1">
+      {/* Below sm the breadcrumb wraps to several lines inside a fixed-height
+          header, so the page title and project tabs carry orientation instead. */}
+      <div className="hidden min-w-0 flex-1 sm:block">
         <Breadcrumbs />
       </div>
       <AIConnectionIndicator />

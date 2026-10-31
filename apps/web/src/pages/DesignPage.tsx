@@ -3,13 +3,12 @@ import { useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
-import { Button } from "../components/Button.js";
+import { Button, buttonClasses } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { fetchPrototypeHtml, friendlyDesignError, generateDesignStream, generatePrototype, getLatestPrototype, parseDesignSections, prototypeDownloadUrl } from "../lib/design.js";
 import { listDocuments } from "../lib/documents.js";
 import { ApiError } from "../lib/api.js";
-import { BackToProjects, PageHeader } from "./PageBits.js";
 
 const TABS = [
   { id: "brief", label: "Brief", sections: ["Brief Desain"] },
@@ -95,7 +94,10 @@ export function DesignPage() {
 
   return (
     <div>
-      <PageHeader title="Desain Studio" description="Brief, sitemap, layar, token, dan pratinjau dokumen." />
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold">Desain Studio</h2>
+        <p className="mt-1 text-sm text-ink-soft">Brief, sitemap, layar, token, dan pratinjau dokumen.</p>
+      </div>
 
       {docsQuery.isPending && <Skeleton label="Memuat dokumen desain…" />}
       {docsQuery.isError && (
@@ -176,7 +178,7 @@ export function DesignPage() {
                         <a
                           href={prototypeDownloadUrl(projectId)}
                           download
-                          className="inline-flex min-h-[40px] items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas"
+                          className={buttonClasses("secondary")}
                         >
                           Unduh index.html
                         </a>
@@ -219,10 +221,6 @@ export function DesignPage() {
           )}
         </div>
       )}
-
-      <div className="mt-6">
-        <BackToProjects />
-      </div>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import type { CreateProjectInput, ProjectDto, UpdateProjectInput } from "@workspace/shared";
+import type { CreateProjectInput, ProjectDto, ProjectWithSummaryDto, UpdateProjectInput } from "@workspace/shared";
 import { conversations, decisions, documents, exports, projects, tasks } from "../db/schema.js";
 import type { AppDatabase } from "../db/connection.js";
 import { HttpError } from "../http/errors.js";
+import { loadProjectSummaries } from "./projectSummary.js";
 
 function slugify(name: string): string {
   const slug = name
@@ -34,6 +35,23 @@ export async function listProjects(db: AppDatabase, state: "active" | "archived"
   return filtered.reverse().map(toDto);
 }
 
+// List view needs stage/next action per row; summaries are loaded in one batch
+// to avoid a query per project.
+export async function listProjectsWithSummary(db: AppDatabase, state: "active" | "archived" | "all"): Promise<ProjectWithSummaryDto[]> {
+  const items = await listProjects(db, state);
+  const summaries = await loadProjectSummaries(db, items.map((item) => item.id));
+  return items.map((item) => ({
+    ...item,
+    summary: summaries.get(item.id) ?? {
+      stage: "PROJECT_BRIEF",
+      nextAction: { kind: "create-document", documentType: "PROJECT_BRIEF" },
+      documents: { total: 0, approved: 0, stale: 0 },
+      tasks: { total: 0, done: 0 },
+      lastExportAt: null,
+    },
+  }));
+}
+
 export async function createProject(db: AppDatabase, input: CreateProjectInput): Promise<ProjectDto> {
   const slug = input.slug ?? slugify(input.name);
   const existing = await db.select({ id: projects.id }).from(projects).where(eq(projects.slug, slug)).get();
@@ -57,6 +75,14 @@ export async function getProject(db: AppDatabase, id: string): Promise<ProjectDt
   const row = await db.select().from(projects).where(eq(projects.id, id)).get();
   if (!row) throw new HttpError("PROJECT_NOT_FOUND", `project not found: ${id}`);
   return toDto(row);
+}
+
+export async function getProjectWithSummary(db: AppDatabase, id: string): Promise<ProjectWithSummaryDto> {
+  const project = await getProject(db, id);
+  const summaries = await loadProjectSummaries(db, [project.id]);
+  const summary = summaries.get(project.id);
+  if (!summary) throw new HttpError("PROJECT_NOT_FOUND", `project summary unavailable: ${id}`);
+  return { ...project, summary };
 }
 
 export async function updateProject(db: AppDatabase, id: string, input: UpdateProjectInput): Promise<ProjectDto> {

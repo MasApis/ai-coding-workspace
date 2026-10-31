@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ImportResult, ProviderDto } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
-import { Button } from "../components/Button.js";
+import { Button, buttonClasses } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { Select, TextInput } from "../components/TextField.js";
@@ -76,7 +76,7 @@ function BackupSection() {
             <a
               href={backupDownloadUrl(projectId)}
               download
-              className="inline-flex min-h-[40px] items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas"
+              className={buttonClasses("secondary")}
             >
               Unduh backup
             </a>

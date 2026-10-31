@@ -8,6 +8,7 @@ const EXPECTED_PATHS = [
   "/projects",
   "/projects/new",
   "/projects/:projectId",
+  "/projects/:projectId/documents",
   "/projects/:projectId/planning/:documentType",
   "/projects/:projectId/tasks",
   "/projects/:projectId/chat",
@@ -39,6 +40,22 @@ describe("buildCrumbs", () => {
   it("labels unknown project child segments without crashing", () => {
     const crumbs = buildCrumbs("/projects/abc/chat/xyz");
     expect(crumbs[crumbs.length - 1]).toEqual({ to: "/projects/abc/chat/xyz", label: "Percakapan" });
+  });
+
+  it("labels the documents tab", () => {
+    expect(buildCrumbs("/projects/abc/documents")).toEqual([
+      { to: "/", label: "Ringkasan" },
+      { to: "/projects", label: "Proyek" },
+      { to: "/projects/abc", label: "Detail proyek" },
+      { to: "/projects/abc/documents", label: "Dokumen" },
+    ]);
+  });
+
+  it("shows a readable label for the planning document", () => {
+    expect(buildCrumbs("/projects/abc/planning/technical-spec")[4]).toEqual({
+      to: "/projects/abc/planning/technical-spec",
+      label: "Spesifikasi Teknis",
+    });
   });
 
   it("handles root and top-level pages", () => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { DocumentType } from "./document.js";
 
 export const projectStateSchema = z.enum(["active", "archived"]);
 
@@ -41,4 +42,47 @@ export interface ProjectDto {
   state: "active" | "archived";
   createdAt: string;
   updatedAt: string;
+}
+
+// Canonical planning order. DESIGN_SPEC is generated from the PRD but is not a
+// blocking step, so it never defines a project's stage.
+export const PLANNING_STEP_TYPES = [
+  "PROJECT_BRIEF",
+  "PRD",
+  "USER_FLOW",
+  "TECHNICAL_SPEC",
+  "TEST_PLAN",
+  "TASKS",
+  "AGENTS",
+] as const satisfies readonly DocumentType[];
+
+export type PlanningStepType = (typeof PLANNING_STEP_TYPES)[number];
+
+export type ProjectStage = PlanningStepType | "ready";
+
+export type ProjectNextActionKind =
+  | "create-document"
+  | "write-document"
+  | "review-document"
+  | "approve-document"
+  | "refresh-document"
+  | "export";
+
+export interface ProjectNextAction {
+  kind: ProjectNextActionKind;
+  documentType: DocumentType | null;
+}
+
+// Derived, never stored: the API reports where the project actually stands so
+// every screen can offer the same next step instead of guessing.
+export interface ProjectSummaryDto {
+  stage: ProjectStage;
+  nextAction: ProjectNextAction;
+  documents: { total: number; approved: number; stale: number };
+  tasks: { total: number; done: number };
+  lastExportAt: string | null;
+}
+
+export interface ProjectWithSummaryDto extends ProjectDto {
+  summary: ProjectSummaryDto;
 }

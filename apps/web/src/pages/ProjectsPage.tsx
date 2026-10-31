@@ -5,12 +5,14 @@ import type { ProjectDto } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
 import { Button } from "../components/Button.js";
+import { ButtonLink } from "../components/ButtonLink.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { Select, TextInput } from "../components/TextField.js";
 import { useProjects, type ProjectFilter } from "../hooks/useProjects.js";
 import { ApiError, deleteProject, filterProjects, updateProjectState } from "../lib/api.js";
 import { formatDateTime } from "../lib/format.js";
+import { nextActionHref, nextActionLabel, stageLabel, stageTone } from "../lib/projectStage.js";
 import { PageHeader } from "./PageBits.js";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -66,9 +68,7 @@ export function ProjectsPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <PageHeader title="Proyek" description="Semua workspace perencanaan Anda." />
-        <Link to="/projects/new">
-          <Button>Buat proyek baru</Button>
-        </Link>
+        <ButtonLink to="/projects/new">Buat proyek baru</ButtonLink>
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -114,21 +114,34 @@ export function ProjectsPage() {
           {visible.map((project) => (
             <li key={project.id} className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-4">
               <div className="min-w-0 flex-1">
-                <Link to={`/projects/${project.id}`} className="font-medium text-accent hover:underline">
+                <Link to={`/projects/${project.id}`} className="font-medium text-ink hover:text-accent hover:underline">
                   {project.name}
                 </Link>
                 <p className="mt-1 text-xs text-ink-soft">
                   {project.slug} · Diubah {formatDateTime(project.updatedAt)}
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge variant={stageTone(project.summary.stage, project.summary.documents.stale > 0)}>
+                    {stageLabel(project.summary.stage)}
+                  </Badge>
+                  {filter !== "active" && (
+                    <Badge variant={project.state === "active" ? "accent" : "neutral"}>
+                      {project.state === "active" ? "Aktif" : "Arsip"}
+                    </Badge>
+                  )}
+                  {project.summary.documents.stale > 0 && (
+                    <span className="text-xs text-warning">{project.summary.documents.stale} dokumen usang</span>
+                  )}
+                </div>
               </div>
-              <Badge variant={project.state === "active" ? "accent" : "neutral"}>
-                {project.state === "active" ? "Aktif" : "Arsip"}
-              </Badge>
+              <Link to={nextActionHref(project.id, project.summary.nextAction)} className="text-sm text-accent hover:underline">
+                {nextActionLabel(project.summary.nextAction)} →
+              </Link>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => void handleArchive(project)}>
                   {project.state === "active" ? "Arsipkan" : "Kembalikan"}
                 </Button>
-                <Button variant="destructive" onClick={() => setPendingDelete(project)}>
+                <Button variant="destructive-ghost" onClick={() => setPendingDelete(project)}>
                   Hapus
                 </Button>
               </div>

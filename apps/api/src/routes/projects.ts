@@ -7,7 +7,7 @@ import {
 } from "@workspace/shared";
 import type { AppDatabase } from "../db/connection.js";
 import { HttpError, errorBody } from "../http/errors.js";
-import { createProject, deleteProject, getProject, listProjects, updateProject } from "../services/projectService.js";
+import { createProject, deleteProject, getProjectWithSummary, listProjectsWithSummary, updateProject } from "../services/projectService.js";
 
 function sendError(reply: FastifyReply, err: unknown): void {
   if (err instanceof HttpError) {
@@ -25,7 +25,7 @@ export async function projectRoutes(app: FastifyInstance, db: AppDatabase): Prom
   app.get("/api/projects", async (request, reply) => {
     try {
       const query = projectListQuerySchema.parse(request.query);
-      const items = await listProjects(db, query.state);
+      const items = await listProjectsWithSummary(db, query.state);
       return reply.send({ data: { items } });
     } catch (err) {
       return sendError(reply, err);
@@ -44,7 +44,7 @@ export async function projectRoutes(app: FastifyInstance, db: AppDatabase): Prom
 
   app.get("/api/projects/:id", async (request, reply) => {
     try {
-      const project = await getProject(db, (request.params as { id: string }).id);
+      const project = await getProjectWithSummary(db, (request.params as { id: string }).id);
       return reply.send({ data: project });
     } catch (err) {
       return sendError(reply, err);

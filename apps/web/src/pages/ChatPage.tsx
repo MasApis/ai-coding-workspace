@@ -9,7 +9,6 @@ import { createConversation, listConversations, listMessages, streamChatMessage,
 import { getEffectiveSelection, listModels } from "../lib/providers.js";
 import { getUsage } from "../lib/usage.js";
 import { listDocuments } from "../lib/documents.js";
-import { BackToProjects, PageHeader } from "./PageBits.js";
 
 export function ChatPage() {
   const { projectId, conversationId } = useParams();
@@ -120,7 +119,6 @@ export function ChatPage() {
   if (!projectId) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Chat AI" description="Pilih proyek dulu untuk mulai percakapan." />
         <Alert variant="empty" title="Belum ada konteks proyek">
           Chat terikat pada proyek agar riwayat tersimpan dengan benar.
         </Alert>
@@ -134,7 +132,12 @@ export function ChatPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title="Chat AI" description={selection ? `Model: ${modelOverride.trim() || selection.modelId}` : "Pilih atau mulai percakapan."} />
+        <div>
+          <h2 className="text-lg font-semibold">Chat AI</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            {selection ? `Model: ${modelOverride.trim() || selection.modelId}` : "Pilih atau mulai percakapan."}
+          </p>
+        </div>
         <div className="flex flex-col items-end gap-1">
           <Link to="/settings" className="text-sm text-accent hover:underline">
             Ubah default →
@@ -292,10 +295,6 @@ export function ChatPage() {
             </div>
           </div>
         </section>
-      </div>
-
-      <div className="mt-6">
-        <BackToProjects />
       </div>
     </div>
   );

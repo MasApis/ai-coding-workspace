@@ -31,8 +31,10 @@ for (const width of WIDTHS) {
   });
 }
 
-test("chat without a provider shows the empty state", async ({ page }) => {
-  await page.goto("/projects/00000000-0000-0000-0000-000000000000/chat");
+test("chat without a provider shows the empty state", async ({ page, request }) => {
+  const res = await request.post("/api/projects", { data: { name: "Chat E2E" } });
+  const projectId = ((await res.json()) as { data: { id: string } }).data.id;
+  await page.goto(`/projects/${projectId}/chat`);
   await expect(page.getByText("Belum ada provider AI")).toBeVisible();
   await expect(page.getByRole("link", { name: /Pengaturan/ }).first()).toBeVisible();
 });

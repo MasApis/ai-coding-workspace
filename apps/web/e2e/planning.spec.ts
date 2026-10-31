@@ -11,8 +11,8 @@ test("manual edit, review, and approve flow", async ({ page, request }) => {
   const projectId = await seedProject(request, "Rencana E2E");
 
   await page.goto(`/projects/${projectId}/planning/prd`);
-  await expect(page.getByRole("heading", { name: "Perencanaan" })).toBeVisible();
-  await expect(page.getByText("Dokumen belum ada")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rencana E2E" })).toBeVisible();
+  await expect(page.getByText("PRD belum ada")).toBeVisible();
   await page.getByRole("button", { name: "Buat kosong" }).click();
   await expect(page.getByText("Draf v1")).toBeVisible();
 

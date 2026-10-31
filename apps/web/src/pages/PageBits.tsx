@@ -1,5 +1,3 @@
-import { Link } from "react-router";
-
 export function PageHeader({ title, description }: { title: string; description?: string }) {
   return (
     <div className="mb-6">
@@ -15,13 +13,5 @@ export function TicketNote({ ticket, children }: { ticket: string; children?: Re
       <p className="font-medium text-ink">Hadir di {ticket}</p>
       {children && <div className="mt-1">{children}</div>}
     </div>
-  );
-}
-
-export function BackToProjects() {
-  return (
-    <Link to="/projects" className="text-sm text-accent hover:underline">
-      ← Kembali ke daftar proyek
-    </Link>
   );
 }

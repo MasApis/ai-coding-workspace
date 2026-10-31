@@ -1,4 +1,4 @@
-import type { ProjectDto } from "@workspace/shared";
+import type { ProjectDto, ProjectWithSummaryDto } from "@workspace/shared";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -31,12 +31,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data as T;
 }
 
-export function listProjects(state: "active" | "archived" | "all" = "active"): Promise<ProjectDto[]> {
-  return request<{ items: ProjectDto[] }>(`/projects?state=${state}`).then((d) => d.items);
+export function listProjects(state: "active" | "archived" | "all" = "active"): Promise<ProjectWithSummaryDto[]> {
+  return request<{ items: ProjectWithSummaryDto[] }>(`/projects?state=${state}`).then((d) => d.items);
 }
 
-export function getProject(id: string): Promise<ProjectDto> {
-  return request<ProjectDto>(`/projects/${encodeURIComponent(id)}`);
+export function getProject(id: string): Promise<ProjectWithSummaryDto> {
+  return request<ProjectWithSummaryDto>(`/projects/${encodeURIComponent(id)}`);
 }
 
 export function createProject(input: { name: string; description?: string; ideaMd?: string }): Promise<ProjectDto> {
@@ -54,7 +54,7 @@ export function deleteProject(id: string): Promise<void> {
   return request<void>(`/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-export function filterProjects(projects: ProjectDto[], query: string): ProjectDto[] {
+export function filterProjects<T extends ProjectDto>(projects: T[], query: string): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return projects;
   return projects.filter((p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q));

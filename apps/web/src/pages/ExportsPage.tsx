@@ -4,12 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ExportDto, ExportManifest } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
-import { Button } from "../components/Button.js";
+import { Button, buttonClasses } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { ApiError } from "../lib/api.js";
 import { listDocuments } from "../lib/documents.js";
 import { createExport, downloadUrl } from "../lib/exports.js";
-import { BackToProjects, PageHeader } from "./PageBits.js";
 
 export function ExportsPage() {
   const { projectId } = useParams();
@@ -37,7 +36,10 @@ export function ExportsPage() {
 
   return (
     <div>
-      <PageHeader title="Ekspor" description="Paket ZIP dan serah terima OpenCode." />
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold">Ekspor</h2>
+        <p className="mt-1 text-sm text-ink-soft">Paket ZIP dan serah terima OpenCode.</p>
+      </div>
 
       {docsQuery.isPending && <Skeleton label="Memuat dokumen…" />}
       {docsQuery.isError && <Alert variant="error" title="Dokumen tidak dapat dimuat">Pastikan server API berjalan.</Alert>}
@@ -84,7 +86,7 @@ export function ExportsPage() {
               {exportMutation.isPending ? "Membuat ZIP…" : "Buat paket ZIP"}
             </Button>
             {lastExport && (
-              <a href={downloadUrl(lastExport.id)} download className="inline-flex min-h-[40px] items-center justify-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink hover:bg-canvas">
+              <a href={downloadUrl(lastExport.id)} download className={buttonClasses("secondary")}>
                 Unduh ZIP
               </a>
             )}
@@ -115,9 +117,6 @@ export function ExportsPage() {
         </div>
       )}
 
-      <div className="mt-6">
-        <BackToProjects />
-      </div>
     </div>
   );
 }

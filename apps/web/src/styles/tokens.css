@@ -37,9 +37,11 @@ body {
   outline-offset: 2px;
 }
 
-/* Touch targets: 40px desktop, 44px on small screens. */
+/* Touch targets: 40px desktop, 44px on small screens.
+   Checkboxes and radios are excluded: forcing min-height stretches the
+   native control instead of enlarging its hit area. */
 button,
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea,
 [role="button"] {
@@ -48,7 +50,7 @@ textarea,
 
 @media (max-width: 768px) {
   button,
-  input,
+  input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea,
   [role="button"] {

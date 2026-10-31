@@ -7,10 +7,10 @@ import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { AIPanel } from "../components/planning/AIPanel.js";
 import { EditorPane } from "../components/planning/EditorPane.js";
-import { StepsList, slugToType } from "../components/planning/StepsList.js";
+import { StepsList } from "../components/planning/StepsList.js";
+import { slugToType, DOCUMENT_LABELS } from "../lib/documentTypes.js";
 import { ApiError } from "../lib/api.js";
 import { approveDocument, createDocument, createVersion, friendlyDocumentError, listDocuments, listVersions, reviewDocument } from "../lib/documents.js";
-import { BackToProjects, PageHeader } from "./PageBits.js";
 
 export function PlanningPage() {
   const { projectId, documentType } = useParams();
@@ -115,20 +115,14 @@ export function PlanningPage() {
 
   if (!type || !projectId) {
     return (
-      <div className="flex flex-col gap-4">
-        <PageHeader title="Perencanaan" description="Jenis dokumen tidak dikenal." />
-        <Alert variant="error" title="Dokumen tidak dikenal">
-          Kembali ke proyek dan pilih langkah yang tersedia.
-        </Alert>
-        <BackToProjects />
-      </div>
+      <Alert variant="error" title="Dokumen tidak dikenal">
+        Kembali ke tab Dokumen dan pilih langkah yang tersedia.
+      </Alert>
     );
   }
 
   return (
     <div>
-      <PageHeader title="Perencanaan" description="Dokumen, versi, dan persetujuan." />
-
       <div className="mb-4 flex gap-1 md:hidden" role="tablist" aria-label="Panel perencana">
         {(["steps", "editor", "ai"] as const).map((tab) => (
           <button
@@ -157,7 +151,7 @@ export function PlanningPage() {
           )}
           {!docsQuery.isPending && !docsQuery.isError && !doc && (
             <div className="flex flex-col gap-3">
-              <Alert variant="empty" title="Dokumen belum ada">
+              <Alert variant="empty" title={`${DOCUMENT_LABELS[type]} belum ada`}>
                 Buat dokumen kosong lalu tulis manual, atau generate dengan AI.
               </Alert>
               <div>
@@ -192,15 +186,12 @@ export function PlanningPage() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <BackToProjects />
-      </div>
-
       <Dialog
         open={approveOpen}
         title="Setujui dokumen?"
         onClose={() => setApproveOpen(false)}
         confirmLabel={approveMutation.isPending ? "Menyetujui…" : "Ya, setujui"}
+        confirmDisabled={approveMutation.isPending}
         onConfirm={() => approveMutation.mutate()}
       >
         <p>Versi terkini akan dikunci sebagai approved. Perubahan berikutnya memerlukan draf baru yang eksplisit.</p>

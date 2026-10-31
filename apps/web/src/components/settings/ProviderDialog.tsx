@@ -92,6 +92,7 @@ export function ProviderDialog({
       title={initial ? "Ubah provider" : "Tambah provider"}
       onClose={onClose}
       confirmLabel={pending ? "Menyimpan…" : "Simpan"}
+      confirmDisabled={pending}
       onConfirm={() => {
         if (canSave) onSubmit({ label: label.trim(), protocol, baseUrl: baseUrl.trim(), credential, removeCredential: removeKey, enabled, testModel: testModel.trim() });
       }}

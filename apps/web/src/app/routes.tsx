@@ -1,7 +1,9 @@
 import type { RouteObject } from "react-router";
 import { AppShell } from "../components/layout/AppShell.js";
+import { ProjectLayout } from "../components/project/ProjectLayout.js";
 import { ComponentDemo } from "../demo/ComponentDemo.js";
 import { ChatPage } from "../pages/ChatPage.js";
+import { DocumentsPage } from "../pages/DocumentsPage.js";
 import { ExportsPage } from "../pages/ExportsPage.js";
 import { DesignPage } from "../pages/DesignPage.js";
 import { NotFoundPage } from "../pages/MiscPages.js";
@@ -19,6 +21,7 @@ export const routePaths = [
   "/projects",
   "/projects/new",
   "/projects/:projectId",
+  "/projects/:projectId/documents",
   "/projects/:projectId/planning/:documentType",
   "/projects/:projectId/tasks",
   "/projects/:projectId/chat",
@@ -38,13 +41,22 @@ export const routes: RouteObject[] = [
       { path: "/", element: <OverviewPage /> },
       { path: "/projects", element: <ProjectsPage /> },
       { path: "/projects/new", element: <NewProjectPage /> },
-      { path: "/projects/:projectId", element: <ProjectOverviewPage /> },
-      { path: "/projects/:projectId/planning/:documentType", element: <PlanningPage /> },
-      { path: "/projects/:projectId/tasks", element: <TasksPage /> },
-      { path: "/projects/:projectId/chat", element: <ChatPage /> },
-      { path: "/projects/:projectId/chat/:conversationId", element: <ChatPage /> },
-      { path: "/projects/:projectId/exports", element: <ExportsPage /> },
-      { path: "/projects/:projectId/design", element: <DesignPage /> },
+      // Every project screen shares one header and tab bar, so the project is
+      // loaded once by the layout and handed to pages through the outlet.
+      {
+        path: "/projects/:projectId",
+        element: <ProjectLayout />,
+        children: [
+          { index: true, element: <ProjectOverviewPage /> },
+          { path: "documents", element: <DocumentsPage /> },
+          { path: "planning/:documentType", element: <PlanningPage /> },
+          { path: "tasks", element: <TasksPage /> },
+          { path: "chat", element: <ChatPage /> },
+          { path: "chat/:conversationId", element: <ChatPage /> },
+          { path: "exports", element: <ExportsPage /> },
+          { path: "design", element: <DesignPage /> },
+        ],
+      },
       { path: "/templates", element: <TemplatesPage /> },
       { path: "/settings", element: <SettingsPage /> },
       { path: "/demo", element: <ComponentDemo /> },

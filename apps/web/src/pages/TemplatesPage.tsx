@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
-import { Button } from "../components/Button.js";
+import { Button, buttonClasses } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Select, TextInput } from "../components/TextField.js";
 import { STARTER_TEMPLATES, filterTemplates, type StackFilter, type StarterTemplate } from "@workspace/shared";
@@ -107,7 +107,7 @@ export function TemplatesPage() {
               <a
                 href={downloadTemplateUrl(t.id)}
                 download
-                className="inline-flex min-h-[40px] items-center rounded-control border border-line px-4 text-sm font-medium text-ink hover:bg-canvas"
+                className={buttonClasses("secondary")}
               >
                 Unduh ZIP
               </a>
@@ -121,6 +121,7 @@ export function TemplatesPage() {
         title={active ? `Gunakan ${active.name}` : "Gunakan template"}
         onClose={() => setActive(null)}
         confirmLabel={pending ? "Membuat…" : "Buat proyek + file"}
+        confirmDisabled={pending}
         onConfirm={() => void handleInstantiate()}
       >
         <div className="flex flex-col gap-4">

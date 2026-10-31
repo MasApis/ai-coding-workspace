@@ -71,4 +71,9 @@ describe("design tokens", () => {
   it("meets 3:1 for the focus indicator on surface", () => {
     expect(contrastRatio("#6366F1", "#FFFFFF")).toBeGreaterThanOrEqual(3);
   });
+
+  it("does not force min-height on checkboxes or radios", () => {
+    expect(css).toContain('input:not([type="checkbox"]):not([type="radio"])');
+    expect(css).not.toMatch(/^\s*input,\s*$/m);
+  });
 });

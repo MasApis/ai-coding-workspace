@@ -25,3 +25,18 @@ test("wizard creates a project and it appears in the list", async ({ page, reque
   const body = (await list.json()) as { data: { items: Array<{ name: string }> } };
   expect(body.data.items.some((p) => p.name === "Toko E2E")).toBe(true);
 });
+
+test("project shell keeps one header and tabs across sections", async ({ page, request }) => {
+  const res = await request.post("/api/projects", { data: { name: "Shell E2E" } });
+  const projectId = ((await res.json()) as { data: { id: string } }).data.id;
+
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByRole("heading", { name: "Shell E2E" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mulai Brief" }).first()).toBeVisible();
+
+  await page.getByRole("link", { name: "Dokumen", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/documents`));
+  await expect(page.getByRole("heading", { name: "Dokumen" })).toBeVisible();
+  // The project header survives navigation; pages no longer repeat it.
+  await expect(page.getByRole("heading", { name: "Shell E2E" })).toBeVisible();
+});

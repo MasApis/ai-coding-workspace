@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
-type AlertVariant = "error" | "info" | "empty";
+type AlertVariant = "error" | "warning" | "info" | "empty";
 
 const VARIANT_CLASSES: Record<AlertVariant, string> = {
   error: "border-error/30 bg-error/5 text-ink",
+  warning: "border-warning/30 bg-warning/5 text-ink",
   info: "border-line bg-surface text-ink",
   empty: "border-dashed border-line bg-surface text-ink-soft",
 };

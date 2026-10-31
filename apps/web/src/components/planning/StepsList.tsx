@@ -1,31 +1,17 @@
 import { Link } from "react-router";
-import type { DocumentDto, DocumentType } from "@workspace/shared";
-import { Alert } from "../Alert.js";
+import type { DocumentDto } from "@workspace/shared";
 import { Badge } from "../Badge.js";
+import { DOCUMENT_LABELS, typeToSlug } from "../../lib/documentTypes.js";
 
-export const PLAN_STEPS: Array<{ type: DocumentType; label: string }> = [
-  { type: "PROJECT_BRIEF", label: "Brief" },
-  { type: "PRD", label: "PRD" },
-  { type: "USER_FLOW", label: "Alur Pengguna" },
-  { type: "TECHNICAL_SPEC", label: "Spesifikasi Teknis" },
-  { type: "TEST_PLAN", label: "Rencana Uji" },
-  { type: "TASKS", label: "Tugas & AGENTS" },
-  { type: "AGENTS", label: "AGENTS" },
-];
-
-export function typeToSlug(type: DocumentType): string {
-  return type.toLowerCase().replace(/_/g, "-");
-}
-
-const SLUG_TO_TYPE: Record<string, DocumentType> = Object.fromEntries(
-  PLAN_STEPS.map((s) => [typeToSlug(s.type), s.type]),
-) as Record<string, DocumentType>;
-
-export function slugToType(slug: string | undefined): DocumentType | null {
-  if (!slug) return null;
-  if (slug === "brief") return "PROJECT_BRIEF";
-  return SLUG_TO_TYPE[slug] ?? null;
-}
+export const PLAN_STEPS = [
+  { type: "PROJECT_BRIEF", label: DOCUMENT_LABELS.PROJECT_BRIEF },
+  { type: "PRD", label: DOCUMENT_LABELS.PRD },
+  { type: "USER_FLOW", label: DOCUMENT_LABELS.USER_FLOW },
+  { type: "TECHNICAL_SPEC", label: DOCUMENT_LABELS.TECHNICAL_SPEC },
+  { type: "TEST_PLAN", label: DOCUMENT_LABELS.TEST_PLAN },
+  { type: "TASKS", label: DOCUMENT_LABELS.TASKS },
+  { type: "AGENTS", label: DOCUMENT_LABELS.AGENTS },
+] as const;
 
 function statusBadge(doc: DocumentDto | undefined) {
   if (!doc) return <Badge variant="neutral">Belum ada</Badge>;
@@ -63,11 +49,6 @@ export function StepsList({
           </Link>
         );
       })}
-      {docs.length === 0 && (
-        <Alert variant="empty" title="Belum ada dokumen">
-          Buat kosong atau generate dengan AI.
-        </Alert>
-      )}
     </nav>
   );
 }
