@@ -37,6 +37,10 @@ export function getProject(id: string): Promise<ProjectDto> {
   return request<ProjectDto>(`/projects/${encodeURIComponent(id)}`);
 }
 
+export function createProject(input: { name: string; description?: string; ideaMd?: string }): Promise<ProjectDto> {
+  return request<ProjectDto>("/projects", { method: "POST", body: JSON.stringify(input) });
+}
+
 export function updateProjectState(id: string, state: "active" | "archived"): Promise<ProjectDto> {
   return request<ProjectDto>(`/projects/${encodeURIComponent(id)}`, {
     method: "PATCH",
