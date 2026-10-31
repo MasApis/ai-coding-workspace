@@ -9,5 +9,8 @@
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
     "dev": "echo \"shared: no dev server\""
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }

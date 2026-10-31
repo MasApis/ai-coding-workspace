@@ -4,17 +4,22 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"api dev not implemented yet (see TICKET-006)\"",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc --noEmit -p tsconfig.json",
+    "start": "tsx src/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.1",
+    "@workspace/shared": "workspace:*",
     "better-sqlite3": "^12.4.1",
-    "drizzle-orm": "^0.44.5"
+    "drizzle-orm": "^0.44.5",
+    "fastify": "^5.12.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^26.6.6",
     "drizzle-kit": "^0.31.7",
     "tsx": "^4.20.6"
   }
