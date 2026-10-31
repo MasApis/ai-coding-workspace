@@ -8,7 +8,7 @@
     "dev": "pnpm --parallel --filter './apps/*' dev",
     "build": "pnpm --recursive build",
     "test": "vitest run",
-    "test:e2e": "echo \"E2E not implemented yet (TICKET-001 foundation only)\"",
+    "test:e2e": "pnpm --filter @workspace/web test:e2e",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "db:migrate": "pnpm --filter @workspace/api db:migrate"

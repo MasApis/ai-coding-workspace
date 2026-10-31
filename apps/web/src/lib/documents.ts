@@ -6,7 +6,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
-      headers: { "Content-Type": "application/json" },
+      ...(init?.body ? { headers: { "Content-Type": "application/json" } } : {}),
       ...init,
     });
   } catch {
