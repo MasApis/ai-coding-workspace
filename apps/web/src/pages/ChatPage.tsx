@@ -1,42 +1,251 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
+import { Button } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
-import { getEffectiveSelection } from "../lib/providers.js";
+import { ApiError } from "../lib/api.js";
+import { createConversation, listConversations, listMessages, streamChatMessage } from "../lib/chat.js";
+import { getEffectiveSelection, listModels } from "../lib/providers.js";
 import { BackToProjects, PageHeader } from "./PageBits.js";
 
 export function ChatPage() {
-  const { conversationId, projectId } = useParams();
-  const selectionQuery = useQuery({ queryKey: ["ai-selection", projectId], queryFn: () => getEffectiveSelection(projectId) });
+  const { projectId, conversationId } = useParams();
+  const queryClient = useQueryClient();
+  const [activeId, setActiveId] = useState<string | null>(conversationId ?? null);
+  const [draft, setDraft] = useState("");
+  const [streamingText, setStreamingText] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [lastContent, setLastContent] = useState<string | null>(null);
+  const [modelOverride, setModelOverride] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setActiveId(conversationId ?? null);
+  }, [conversationId]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const conversationsQuery = useQuery({
+    queryKey: ["conversations", projectId],
+    queryFn: () => listConversations(projectId ?? ""),
+    enabled: !!projectId,
+  });
+  const conversations = conversationsQuery.data ?? [];
+
+  const messagesQuery = useQuery({
+    queryKey: ["messages", activeId],
+    queryFn: () => listMessages(activeId ?? ""),
+    enabled: !!activeId,
+  });
+  const messages = messagesQuery.data ?? [];
+
+  const selectionQuery = useQuery({ queryKey: ["ai-selection", projectId], queryFn: () => getEffectiveSelection(projectId), enabled: !!projectId });
   const selection = selectionQuery.data ?? null;
+
+  const modelsQuery = useQuery({
+    queryKey: ["provider-models", selection?.providerId],
+    queryFn: () => listModels(selection?.providerId ?? ""),
+    enabled: !!selection,
+    staleTime: 60000,
+  });
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages.length, streamingText]);
+
+  async function refresh(): Promise<void> {
+    await queryClient.invalidateQueries({ queryKey: ["conversations", projectId] });
+    await queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+  }
+
+  async function send(content: string): Promise<void> {
+    if (!projectId || streaming || !content.trim()) return;
+    setChatError(null);
+    setStreamingText("");
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let targetId = activeId;
+    try {
+      if (!targetId) {
+        const created = await createConversation(projectId, content.trim().slice(0, 40));
+        targetId = created.id;
+        setActiveId(targetId);
+      }
+      setLastContent(content);
+      setDraft("");
+      setStreaming(true);
+      const override = modelOverride.trim() || undefined;
+      await streamChatMessage(targetId, content.trim(), override, {
+        signal: controller.signal,
+        onDelta: (text) => setStreamingText((t) => t + text),
+        onError: (code, message) => setChatError(code === "NO_PROVIDER_CONFIGURED" ? "Belum ada provider. Hubungkan di Pengaturan." : message),
+        onDone: () => void refresh(),
+      });
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setChatError(err instanceof ApiError ? err.message : "Pengiriman gagal.");
+      }
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+      await refresh();
+    }
+  }
+
+  if (!projectId) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader title="Chat AI" description="Pilih proyek dulu untuk mulai percakapan." />
+        <Alert variant="empty" title="Belum ada konteks proyek">
+          Chat terikat pada proyek agar riwayat tersimpan dengan benar.
+        </Alert>
+        <Link to="/projects" className="text-sm text-accent hover:underline">
+          ← Pilih proyek
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <PageHeader
-        title="Chat AI"
-        description={
-          conversationId
-            ? `Percakapan: ${conversationId}`
-            : selection
-              ? `Siap dengan ${selection.modelId}`
-              : "Pilih atau mulai percakapan."
-        }
-      />
-      <div className="flex flex-col gap-4">
-        {selectionQuery.isPending && <Skeleton label="Memeriksa konfigurasi AI…" />}
-        {!selectionQuery.isPending && !selection && (
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <PageHeader title="Chat AI" description={selection ? `Model: ${modelOverride.trim() || selection.modelId}` : "Pilih atau mulai percakapan."} />
+        <Link to="/settings" className="text-sm text-accent hover:underline">
+          Ubah default →
+        </Link>
+      </div>
+
+      {!selection && !selectionQuery.isPending && (
+        <div className="mb-4">
           <Alert variant="empty" title="Belum ada provider AI">
-            Hubungkan provider di Pengaturan agar Chat AI bisa digunakan.{" "}
+            Hubungkan provider di Pengaturan agar Chat bisa digunakan.{" "}
             <Link to="/settings" className="font-medium text-accent hover:underline">
               Buka Pengaturan →
             </Link>
           </Alert>
-        )}
-        {!selectionQuery.isPending && selection && (
-          <Alert variant="info" title="Riwayat percakapan hadir di TICKET-014">
-            Provider aktif: <span className="font-mono">{selection.modelId}</span> (cakupan {selection.scope}).
-          </Alert>
-        )}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+        <section aria-label="Percakapan" className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold">Percakapan</h2>
+          {conversationsQuery.isPending && <Skeleton label="Memuat percakapan…" />}
+          <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto md:max-h-none">
+            {conversations.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveId(c.id)}
+                  aria-current={activeId === c.id ? "true" : undefined}
+                  className={`w-full rounded-control px-3 py-2 text-left text-sm ${activeId === c.id ? "bg-accent-soft font-medium text-accent" : "hover:bg-canvas"}`}
+                >
+                  {c.title ?? "Tanpa judul"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setActiveId(null);
+              setDraft("");
+              setStreamingText("");
+              setChatError(null);
+            }}
+          >
+            + Percakapan baru
+          </Button>
+        </section>
+
+        <section aria-label="Pesan" className="flex min-h-[50vh] flex-col gap-3 rounded-card border border-line bg-surface p-4">
+          <div ref={listRef} className="flex max-h-[50vh] min-h-[30vh] flex-col gap-3 overflow-y-auto" aria-live="polite">
+            {!activeId && messages.length === 0 && !streamingText && (
+              <Alert variant="empty" title="Mulai percakapan">
+                Tulis pesan pertama di bawah. Percakapan baru dibuat otomatis.
+              </Alert>
+            )}
+            {activeId && messagesQuery.isPending && <Skeleton label="Memuat pesan…" />}
+            {messages.map((m) => (
+              <div key={m.id} className={`max-w-[85%] rounded-card p-3 text-sm ${m.role === "user" ? "self-end bg-accent-soft" : "self-start bg-canvas"}`}>
+                <p className="mb-1 text-xs font-medium text-ink-soft">{m.role === "user" ? "Anda" : "AI"}{m.modelId ? ` · ${m.modelId}` : ""}</p>
+                <p className="whitespace-pre-wrap">{m.contentMd}</p>
+              </div>
+            ))}
+            {streamingText && (
+              <div className="max-w-[85%] self-start rounded-card bg-canvas p-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-ink-soft">AI</p>
+                <p className="whitespace-pre-wrap">{streamingText}</p>
+              </div>
+            )}
+          </div>
+
+          {chatError && (
+            <div className="flex flex-col gap-2">
+              <Alert variant="error" title="Pesan gagal">
+                {chatError}
+              </Alert>
+              {lastContent && !streaming && (
+                <div>
+                  <Button variant="secondary" onClick={() => void send(lastContent)}>
+                    Coba lagi
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <input
+              aria-label="Override model (opsional)"
+              value={modelOverride}
+              onChange={(e) => setModelOverride(e.target.value)}
+              placeholder={selection ? `Model (default: ${selection.modelId})` : "Model"}
+              list="chat-model-presets"
+              className="w-full rounded-control border border-line bg-surface px-3 text-sm"
+            />
+            {modelsQuery.data?.modelsAvailable && modelsQuery.data.items.length > 0 && (
+              <datalist id="chat-model-presets">
+                {modelsQuery.data.items.map((m) => (
+                  <option key={m.id} value={m.modelId} />
+                ))}
+              </datalist>
+            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Pesan</span>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send(draft);
+                  }
+                }}
+                rows={3}
+                disabled={streaming || !selection}
+                placeholder={selection ? "Tulis pesan… (Enter kirim, Shift+Enter baris baru)" : "Hubungkan provider dulu di Pengaturan"}
+                className="w-full rounded-control border border-line bg-surface p-3 text-sm disabled:opacity-50"
+              />
+            </label>
+            <div className="flex gap-2">
+              {!streaming ? (
+                <Button onClick={() => void send(draft)} disabled={!draft.trim() || !selection}>
+                  Kirim
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={() => abortRef.current?.abort()}>
+                  Stop
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-6">
         <BackToProjects />
       </div>
     </div>

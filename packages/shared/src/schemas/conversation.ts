@@ -23,6 +23,15 @@ export const createMessageSchema = z
   })
   .strict();
 
+export const chatStreamBodySchema = z
+  .object({
+    contentMd: z.string().min(1).max(200000),
+    modelId: z.string().min(1).max(200).optional(),
+  })
+  .strict();
+
+export type ChatStreamBody = z.infer<typeof chatStreamBodySchema>;
+
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
