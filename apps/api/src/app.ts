@@ -5,6 +5,7 @@ import { errorBody } from "./http/errors.js";
 import { projectRoutes } from "./routes/projects.js";
 import { providerRoutes } from "./routes/providers.js";
 import { aiRoutes } from "./routes/ai.js";
+import { conversationRoutes } from "./routes/conversations.js";
 import { documentRoutes } from "./routes/documents.js";
 import { exportRoutes } from "./routes/exports.js";
 import { planningRoutes } from "./routes/planning.js";
@@ -34,6 +35,7 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
   await providerRoutes(app, db, gatewayKey);
   await aiRoutes(app, db, gatewayKey);
   await documentRoutes(app, db);
+  await conversationRoutes(app, db);
   await exportRoutes(app, db);
   await planningRoutes(app, db, gatewayKey);
 
