@@ -5,6 +5,7 @@ import { errorBody } from "./http/errors.js";
 import { projectRoutes } from "./routes/projects.js";
 import { providerRoutes } from "./routes/providers.js";
 import { aiRoutes } from "./routes/ai.js";
+import { documentRoutes } from "./routes/documents.js";
 import { loadGatewayKey } from "./services/secrets.js";
 
 const WEB_ORIGIN = process.env["WEB_ORIGIN"] ?? "http://127.0.0.1:5173";
@@ -30,6 +31,7 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
   await projectRoutes(app, db);
   await providerRoutes(app, db, gatewayKey);
   await aiRoutes(app, db, gatewayKey);
+  await documentRoutes(app, db);
 
   app.setErrorHandler((err, _request, reply) => {
     if (reply.sent) return;

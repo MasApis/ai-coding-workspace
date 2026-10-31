@@ -47,6 +47,9 @@ export const documents = sqliteTable(
     approvalState: text("approval_state").notNull().default("draft"),
     // No hard FK: bound to an exact version id by the service layer (TICKET-009).
     currentVersionId: text("current_version_id"),
+    // Set on approval; cleared when a new draft is created from the approved version.
+    approvedVersionId: text("approved_version_id"),
+    approvedAt: integer("approved_at", { mode: "timestamp_ms" }),
     upstreamManifestJson: text("upstream_manifest_json"),
     ...lifecycle(),
   },

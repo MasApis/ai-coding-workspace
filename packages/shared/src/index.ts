@@ -7,4 +7,5 @@ export function placeholder(): string {
 export * from "./schemas/project.js";
 export * from "./schemas/provider.js";
 export * from "./schemas/ai.js";
+export * from "./schemas/document.js";
 export { z } from "zod";

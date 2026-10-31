@@ -15,6 +15,13 @@
       "when": 1793444516716,
       "tag": "0001_overconfident_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793448962200,
+      "tag": "0002_public_korvac",
+      "breakpoints": true
     }
   ]
 }
