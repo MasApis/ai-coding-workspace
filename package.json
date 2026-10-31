@@ -11,7 +11,7 @@
     "test:e2e": "echo \"E2E not implemented yet (TICKET-001 foundation only)\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "db:migrate": "echo \"DB migrations not implemented yet (see TICKET-002)\" && exit 1"
+    "db:migrate": "pnpm --filter @workspace/api db:migrate"
   },
   "devDependencies": {
     "eslint": "^9.39.2",
