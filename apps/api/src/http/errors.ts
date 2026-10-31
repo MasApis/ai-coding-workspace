@@ -12,6 +12,7 @@ export type ErrorCode =
   | "DOCUMENT_TYPE_TAKEN"
   | "APPROVED_LOCKED"
   | "INVALID_STATE"
+  | "EXPORT_NOT_FOUND"
   | "INTERNAL_ERROR";
 
 export type ApiErrorCode = ErrorCode | GatewayErrorCode;
@@ -28,6 +29,7 @@ const STATUS: Record<ErrorCode, number> = {
   DOCUMENT_TYPE_TAKEN: 409,
   APPROVED_LOCKED: 409,
   INVALID_STATE: 409,
+  EXPORT_NOT_FOUND: 404,
   INTERNAL_ERROR: 500,
 };
 
