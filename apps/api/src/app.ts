@@ -3,12 +3,15 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { openDatabase } from "./db/connection.js";
 import { errorBody } from "./http/errors.js";
 import { projectRoutes } from "./routes/projects.js";
+import { providerRoutes } from "./routes/providers.js";
+import { loadGatewayKey } from "./services/secrets.js";
 
 const WEB_ORIGIN = process.env["WEB_ORIGIN"] ?? "http://127.0.0.1:5173";
 
-export async function createApp(dbPath?: string): Promise<FastifyInstance> {
+export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer }): Promise<FastifyInstance> {
   const path = dbPath ?? process.env["DB_PATH"] ?? "./data/workspace.sqlite";
   const { db, close } = openDatabase(path);
+  const gatewayKey = opts?.gatewayKey ?? loadGatewayKey();
 
   const app = Fastify({ logger: false });
   app.decorate("db", db);
@@ -24,6 +27,7 @@ export async function createApp(dbPath?: string): Promise<FastifyInstance> {
   });
 
   await projectRoutes(app, db);
+  await providerRoutes(app, db, gatewayKey);
 
   app.setErrorHandler((err, _request, reply) => {
     if (reply.sent) return;

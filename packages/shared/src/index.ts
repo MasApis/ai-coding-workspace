@@ -5,4 +5,5 @@ export function placeholder(): string {
 }
 
 export * from "./schemas/project.js";
+export * from "./schemas/provider.js";
 export { z } from "zod";

@@ -33,13 +33,18 @@ describe("database bootstrap", () => {
       .all() as Array<{ name: string }>;
     expect(tables.map((t) => t.name).sort()).toEqual(
       [
+        "ai_preferences",
+        "ai_requests",
         "conversations",
         "decisions",
         "document_versions",
         "documents",
         "exports",
         "messages",
+        "model_presets",
         "projects",
+        "provider_configs",
+        "provider_secrets",
         "tasks",
       ].sort(),
     );

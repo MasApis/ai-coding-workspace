@@ -147,6 +147,90 @@ export const messages = sqliteTable(
   (t) => [index("messages_conversation_id_idx").on(t.conversationId)],
 );
 
+export const providerConfigs = sqliteTable(
+  "provider_configs",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    // openai-compatible | openai | anthropic | gemini | ollama
+    protocol: text("protocol").notNull(),
+    baseUrl: text("base_url"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    ...lifecycle(),
+  },
+  (t) => [index("provider_configs_updated_at_idx").on(t.updatedAt)],
+);
+
+// Ciphertext envelope only. The AES-256-GCM key lives outside the DB
+// (AI_GATEWAY_KEY env or data/.keys/ai-gateway.key, mode 0600).
+export const providerSecrets = sqliteTable(
+  "provider_secrets",
+  {
+    providerId: text("provider_id")
+      .primaryKey()
+      .references(() => providerConfigs.id, { onDelete: "cascade" }),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [index("provider_secrets_created_at_idx").on(t.createdAt)],
+);
+
+export const modelPresets = sqliteTable(
+  "model_presets",
+  {
+    id: text("id").primaryKey(),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => providerConfigs.id, { onDelete: "cascade" }),
+    modelId: text("model_id").notNull(),
+    label: text("label"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  },
+  (t) => [index("model_presets_provider_id_idx").on(t.providerId)],
+);
+
+export const aiPreferences = sqliteTable(
+  "ai_preferences",
+  {
+    id: text("id").primaryKey(),
+    // global | project
+    scopeType: text("scope_type").notNull(),
+    scopeId: text("scope_id"),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => providerConfigs.id),
+    modelId: text("model_id").notNull(),
+  },
+  (t) => [index("ai_preferences_scope_idx").on(t.scopeType, t.scopeId)],
+);
+
+// Write path belongs to the gateway (AI-025/AI-028). provider_id is
+// deliberately not a FK: history survives provider deletion.
+export const aiRequests = sqliteTable(
+  "ai_requests",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id").references(() => projects.id),
+    providerId: text("provider_id").notNull(),
+    modelId: text("model_id").notNull(),
+    status: text("status").notNull(),
+    startedAt: integer("started_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+    errorCode: text("error_code"),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+  },
+  (t) => [
+    index("ai_requests_project_id_idx").on(t.projectId),
+    index("ai_requests_started_at_idx").on(t.startedAt),
+  ],
+);
+
 export const exports = sqliteTable(
   "exports",
   {
