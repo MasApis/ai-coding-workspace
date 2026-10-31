@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STARTER_TEMPLATES, filterTemplates } from "../src/lib/templates/index.js";
+import { STARTER_TEMPLATES, filterTemplates } from "../src/templates/index.js";
 
 describe("starter templates", () => {
   it("ships at least two ready starters with licenses and readmes", () => {

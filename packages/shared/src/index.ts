@@ -12,4 +12,5 @@ export * from "./schemas/design.js";
 export * from "./schemas/document.js";
 export * from "./schemas/export.js";
 export * from "./schemas/plan.js";
+export * from "./templates/index.js";
 export { z } from "zod";
