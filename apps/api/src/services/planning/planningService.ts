@@ -4,6 +4,7 @@ import { getAdapter } from "../../ai/registry.js";
 import { getEffectiveSelection, resolveWithFallback } from "../../ai/gateway.js";
 import type { ResolvedProviderConfig, StreamEvent, TimeoutPolicy } from "../../ai/types.js";
 import { createDocument, createVersion, listDocuments } from "../documentService.js";
+import { listDecisions } from "../decisionService.js";
 import { getProject } from "../projectService.js";
 import { recordAiRequest } from "../aiUsage.js";
 import { PLAN_TYPE_SPECS, buildQuestionsPrompt, buildSectionPrompt, buildSystemPrompt, truncate } from "./prompts.js";
@@ -24,6 +25,12 @@ async function buildContext(db: AppDatabase, projectId: string, includeUpstream:
   const parts = [`Nama: ${project.name}`];
   if (project.description) parts.push(`Deskripsi: ${truncate(project.description, 2000)}`);
   if (project.ideaMd) parts.push(`Ide: ${truncate(project.ideaMd, 2000)}`);
+  const answers = await listDecisions(db, projectId);
+  if (answers.length > 0) {
+    parts.push(
+      `Jawaban klarifikasi:\n${answers.map((a) => `Q: ${a.question}\nA: ${a.answer}`).join("\n")}`.slice(0, 4000),
+    );
+  }
   if (includeUpstream) {
     const docs = await listDocuments(db, projectId);
     for (const doc of docs) {

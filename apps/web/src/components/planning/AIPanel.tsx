@@ -3,10 +3,12 @@ import { Link } from "react-router";
 import { Alert } from "../Alert.js";
 import { Button } from "../Button.js";
 import { Skeleton } from "../Skeleton.js";
+import { TextArea } from "../TextField.js";
 import { generateDocumentStream, friendlyDocumentError } from "../../lib/documents.js";
+import { listDecisions, saveDecision } from "../../lib/decisions.js";
 import { ApiError } from "../../lib/api.js";
 import { getEffectiveSelection } from "../../lib/providers.js";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function AIPanel({
   projectId,
@@ -27,8 +29,34 @@ export function AIPanel({
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [asking, setAsking] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
   const selectionQuery = useQuery({ queryKey: ["ai-selection", projectId], queryFn: () => getEffectiveSelection(projectId) });
   const selection = selectionQuery.data ?? null;
+  const decisionsQuery = useQuery({ queryKey: ["decisions", projectId], queryFn: () => listDecisions(projectId) });
+  const savedAnswers = new Map((decisionsQuery.data ?? []).map((d) => [d.question, d.answer]));
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSaveAnswer(index: number, question: string): Promise<void> {
+    const answer = (drafts[index] ?? "").trim();
+    if (!answer || savingIndex !== null) return;
+    setSavingIndex(index);
+    setSaveError(null);
+    try {
+      await saveDecision(projectId, { question, answer });
+      setDrafts((d) => {
+        const next = { ...d };
+        delete next[index];
+        return next;
+      });
+      await queryClient.invalidateQueries({ queryKey: ["decisions", projectId] });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Jawaban gagal disimpan.");
+    } finally {
+      setSavingIndex(null);
+    }
+  }
 
   async function handleGenerate(fromApproved: boolean): Promise<void> {
     const controller = new AbortController();
@@ -116,11 +144,39 @@ export function AIPanel({
           {error}
         </Alert>
       )}
+      {saveError && (
+        <Alert variant="error" title="Jawaban gagal disimpan">
+          {saveError}
+        </Alert>
+      )}
       {questions && questions.length > 0 && (
-        <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
-          {questions.map((q, i) => (
-            <li key={i}>{q}</li>
-          ))}
+        <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
+          {questions.map((q, i) => {
+            const saved = savedAnswers.get(q);
+            return (
+              <li key={i}>
+                <p>{q}</p>
+                {saved !== undefined ? (
+                  <p className="mt-1 rounded-control bg-canvas p-2 text-xs text-ink-soft">Jawaban tersimpan: {saved}</p>
+                ) : (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <TextArea
+                      label={`Jawaban untuk pertanyaan ${i + 1}`}
+                      value={drafts[i] ?? ""}
+                      onChange={(e) => setDrafts((d) => ({ ...d, [i]: e.target.value }))}
+                      rows={2}
+                      placeholder="Tulis jawaban… (boleh dikosongkan)"
+                    />
+                    <div>
+                      <Button variant="secondary" disabled={!(drafts[i] ?? "").trim() || savingIndex !== null} onClick={() => void handleSaveAnswer(i, q)}>
+                        {savingIndex === i ? "Menyimpan…" : "Simpan jawaban"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>

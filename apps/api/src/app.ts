@@ -9,6 +9,7 @@ import { aiRoutes } from "./routes/ai.js";
 import { backupRoutes } from "./routes/backup.js";
 import { chatRoutes } from "./routes/chat.js";
 import { conversationRoutes } from "./routes/conversations.js";
+import { decisionRoutes } from "./routes/decisions.js";
 import { designRoutes } from "./routes/design.js";
 import { documentRoutes } from "./routes/documents.js";
 import { templateRoutes } from "./routes/templates.js";
@@ -42,6 +43,7 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
   await aiRoutes(app, db, gatewayKey);
   await documentRoutes(app, db);
   await conversationRoutes(app, db);
+  await decisionRoutes(app, db);
   await backupRoutes(app, db);
   await chatRoutes(app, db, gatewayKey);
   await designRoutes(app, db, gatewayKey);
