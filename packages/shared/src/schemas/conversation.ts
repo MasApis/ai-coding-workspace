@@ -27,6 +27,15 @@ export const chatStreamBodySchema = z
   .object({
     contentMd: z.string().min(1).max(200000),
     modelId: z.string().min(1).max(200).optional(),
+    contextDocs: z
+      .array(
+        z.object({
+          documentId: z.string().min(1).max(200),
+          versionNo: z.number().int().min(1).optional(),
+        }),
+      )
+      .max(10)
+      .optional(),
   })
   .strict();
 

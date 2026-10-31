@@ -158,6 +158,44 @@ export async function listVersions(db: AppDatabase, id: string): Promise<Documen
   }));
 }
 
+export interface ResolvedContextDoc {
+  documentId: string;
+  versionNo: number;
+  type: string;
+  title: string;
+  contentMd: string;
+}
+
+export async function resolveContextDocs(
+  db: AppDatabase,
+  projectId: string,
+  refs: Array<{ documentId: string; versionNo?: number }>,
+): Promise<ResolvedContextDoc[]> {
+  const resolved: ResolvedContextDoc[] = [];
+  for (const ref of refs) {
+    const doc = await db.select().from(documents).where(eq(documents.id, ref.documentId)).get();
+    if (!doc || doc.projectId !== projectId) {
+      throw new HttpError("DOCUMENT_NOT_FOUND", `document not found: ${ref.documentId}`);
+    }
+    if (ref.versionNo !== undefined) {
+      const version = await db
+        .select()
+        .from(documentVersions)
+        .where(and(eq(documentVersions.documentId, doc.id), eq(documentVersions.versionNo, ref.versionNo)))
+        .get();
+      if (!version) throw new HttpError("DOCUMENT_NOT_FOUND", `document version not found: ${ref.documentId} v${ref.versionNo}`);
+      resolved.push({ documentId: doc.id, versionNo: version.versionNo, type: doc.type, title: doc.title, contentMd: version.contentMd });
+    } else {
+      const current = doc.currentVersionId
+        ? await db.select().from(documentVersions).where(eq(documentVersions.id, doc.currentVersionId)).get()
+        : undefined;
+      if (!current) throw new HttpError("DOCUMENT_NOT_FOUND", `document has no content: ${doc.id}`);
+      resolved.push({ documentId: doc.id, versionNo: current.versionNo, type: doc.type, title: doc.title, contentMd: current.contentMd });
+    }
+  }
+  return resolved;
+}
+
 export async function reviewDocument(db: AppDatabase, id: string): Promise<DocumentDto> {
   const row = await requireDocument(db, id);
   if (row.approvalState !== "draft") {

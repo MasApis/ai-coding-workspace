@@ -5,8 +5,9 @@ import { Alert } from "../components/Alert.js";
 import { Button } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { ApiError } from "../lib/api.js";
-import { createConversation, listConversations, listMessages, streamChatMessage } from "../lib/chat.js";
+import { createConversation, listConversations, listMessages, streamChatMessage, type ContextDocRef } from "../lib/chat.js";
 import { getEffectiveSelection, listModels } from "../lib/providers.js";
+import { listDocuments } from "../lib/documents.js";
 import { BackToProjects, PageHeader } from "./PageBits.js";
 
 export function ChatPage() {
@@ -19,6 +20,7 @@ export function ChatPage() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [lastContent, setLastContent] = useState<string | null>(null);
   const [modelOverride, setModelOverride] = useState("");
+  const [selectedDocs, setSelectedDocs] = useState<ContextDocRef[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -45,6 +47,21 @@ export function ChatPage() {
   const selectionQuery = useQuery({ queryKey: ["ai-selection", projectId], queryFn: () => getEffectiveSelection(projectId), enabled: !!projectId });
   const selection = selectionQuery.data ?? null;
 
+  const docsQuery = useQuery({ queryKey: ["documents", projectId], queryFn: () => listDocuments(projectId ?? ""), enabled: !!projectId });
+  const docs = docsQuery.data ?? [];
+
+  const docById = new Map(docs.map((d) => [d.id, d]));
+
+  function toggleDoc(documentId: string): void {
+    setSelectedDocs((prev) => {
+      const doc = docById.get(documentId);
+      if (!doc || doc.currentVersionNo === null) return prev;
+      if (prev.some((d) => d.documentId === documentId)) {
+        return prev.filter((d) => d.documentId !== documentId);
+      }
+      return [...prev, { documentId, versionNo: doc.currentVersionNo }];
+    });
+  }
   const modelsQuery = useQuery({
     queryKey: ["provider-models", selection?.providerId],
     queryFn: () => listModels(selection?.providerId ?? ""),
@@ -78,7 +95,7 @@ export function ChatPage() {
       setDraft("");
       setStreaming(true);
       const override = modelOverride.trim() || undefined;
-      await streamChatMessage(targetId, content.trim(), override, {
+      await streamChatMessage(targetId, content.trim(), override, selectedDocs, {
         signal: controller.signal,
         onDelta: (text) => setStreamingText((t) => t + text),
         onError: (code, message) => setChatError(code === "NO_PROVIDER_CONFIGURED" ? "Belum ada provider. Hubungkan di Pengaturan." : message),
@@ -172,6 +189,11 @@ export function ChatPage() {
               <div key={m.id} className={`max-w-[85%] rounded-card p-3 text-sm ${m.role === "user" ? "self-end bg-accent-soft" : "self-start bg-canvas"}`}>
                 <p className="mb-1 text-xs font-medium text-ink-soft">{m.role === "user" ? "Anda" : "AI"}{m.modelId ? ` · ${m.modelId}` : ""}</p>
                 <p className="whitespace-pre-wrap">{m.contentMd}</p>
+                {m.role === "assistant" && m.contextManifest && m.contextManifest.upstream.length > 0 && (
+                  <p className="mt-2 text-xs text-ink-soft">
+                    Konteks: {m.contextManifest.upstream.map((u) => `${docById.get(u.documentId)?.title ?? u.documentId} v${u.versionNo}`).join(", ")}
+                  </p>
+                )}
               </div>
             ))}
             {streamingText && (
@@ -198,6 +220,21 @@ export function ChatPage() {
           )}
 
           <div className="flex flex-col gap-2">
+            <fieldset>
+              <legend className="text-sm font-medium">Konteks dokumen (opsional)</legend>
+              {docs.length === 0 && <p className="text-xs text-ink-soft">Belum ada dokumen di proyek ini.</p>}
+              <div className="mt-1 flex flex-wrap gap-2">
+                {docs.filter((d) => d.currentVersionNo !== null).map((d) => {
+                  const checked = selectedDocs.some((s) => s.documentId === d.id);
+                  return (
+                    <label key={d.id} className="flex min-h-0 items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs">
+                      <input type="checkbox" checked={checked} onChange={() => toggleDoc(d.id)} className="h-4 w-4 accent-[#4F46E5]" />
+                      {d.title} v{d.currentVersionNo}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
             <input
               aria-label="Override model (opsional)"
               value={modelOverride}

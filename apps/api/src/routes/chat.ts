@@ -9,6 +9,7 @@ import { getAdapter } from "../ai/registry.js";
 import type { ChatMessage } from "../ai/types.js";
 import { HttpError, errorBody } from "../http/errors.js";
 import { createMessage, getConversation, listMessages } from "../services/conversationService.js";
+import { resolveContextDocs } from "../services/documentService.js";
 
 function sendError(reply: FastifyReply, err: unknown): void {
   if (err instanceof GatewayError) {
@@ -31,6 +32,21 @@ const SYSTEM_PROMPT = [
   "Jawab ringkas dan konkret. Format Markdown ringan bila membantu.",
   "Jangan mengeksekusi, mengubah, atau meminta perubahan file apa pun.",
 ].join("\n");
+
+const MAX_CONTEXT_CHARS = 12000;
+
+function buildContextMessage(docs: Array<{ type: string; versionNo: number; contentMd: string }>): string {
+  let total = 0;
+  const parts: string[] = [];
+  for (const doc of docs) {
+    const remaining = MAX_CONTEXT_CHARS - total;
+    if (remaining <= 0) break;
+    const clipped = doc.contentMd.length > remaining ? `${doc.contentMd.slice(0, remaining)}\n\n[dipotong]` : doc.contentMd;
+    total += clipped.length;
+    parts.push(`--- ${doc.type} v${doc.versionNo} ---\n${clipped}`);
+  }
+  return `Konteks dokumen (hanya referensi, jangan ubah):\n\n${parts.join("\n\n")}`;
+}
 
 export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buffer): Promise<void> {
   app.post("/api/conversations/:id/messages/stream", async (request, reply) => {
@@ -58,8 +74,20 @@ export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buf
     }
 
     const history = await listMessages(db, id);
+    const contextRefs = parsed.contextDocs ?? [];
+    let contextDocs: Array<{ documentId: string; versionNo: number; type: string; title: string; contentMd: string }> = [];
+    try {
+      if (contextRefs.length > 0 && !conversation.projectId) {
+        throw new HttpError("DOCUMENT_NOT_FOUND", "context documents require a project conversation");
+      }
+      contextDocs = contextRefs.length > 0 ? await resolveContextDocs(db, conversation.projectId as string, contextRefs) : [];
+    } catch (err) {
+      return sendError(reply, err);
+    }
+    const manifest = contextDocs.map((d) => ({ documentId: d.documentId, versionNo: d.versionNo }));
     const messages: ChatMessage[] = [
       { role: "system", content: SYSTEM_PROMPT },
+      ...(contextDocs.length > 0 ? [{ role: "system" as const, content: buildContextMessage(contextDocs) }] : []),
       ...history.map((m) => ({ role: m.role, content: m.contentMd }) as ChatMessage),
     ];
 
@@ -118,6 +146,7 @@ export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buf
         contentMd: text,
         providerId: target.config.id,
         modelId: target.target.model,
+        contextManifest: manifest.length > 0 ? { upstream: manifest } : undefined,
       });
       if (!raw.destroyed) send({ type: "complete", requestId, messageId: saved.id });
     } catch (err) {

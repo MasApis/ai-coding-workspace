@@ -34,6 +34,11 @@ export function listMessages(conversationId: string): Promise<MessageDto[]> {
   return request<{ items: MessageDto[] }>(`/conversations/${encodeURIComponent(conversationId)}/messages`).then((d) => d.items);
 }
 
+export interface ContextDocRef {
+  documentId: string;
+  versionNo?: number;
+}
+
 export interface ChatStreamHandlers {
   onDelta: (text: string) => void;
   onError: (code: string, message: string) => void;
@@ -45,6 +50,7 @@ export async function streamChatMessage(
   conversationId: string,
   contentMd: string,
   modelId: string | undefined,
+  contextDocs: ContextDocRef[],
   handlers: ChatStreamHandlers,
 ): Promise<void> {
   let res: Response;
@@ -52,7 +58,7 @@ export async function streamChatMessage(
     res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/messages/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(modelId ? { contentMd, modelId } : { contentMd }),
+      body: JSON.stringify({ contentMd, ...(modelId ? { modelId } : {}), ...(contextDocs.length > 0 ? { contextDocs } : {}) }),
       signal: handlers.signal,
     });
   } catch (err) {
