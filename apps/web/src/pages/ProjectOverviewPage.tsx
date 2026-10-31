@@ -2,12 +2,13 @@ import { Link, useParams } from "react-router";
 import { BackToProjects, PageHeader } from "./PageBits.js";
 
 const DOC_TYPES = [
-  { slug: "brief", label: "Brief" },
+  { slug: "project-brief", label: "Brief" },
   { slug: "prd", label: "PRD" },
   { slug: "user-flow", label: "Alur Pengguna" },
   { slug: "technical-spec", label: "Spesifikasi Teknis" },
   { slug: "test-plan", label: "Rencana Uji" },
-  { slug: "tasks", label: "Tugas & AGENTS" },
+  { slug: "tasks", label: "Dokumen Tugas" },
+  { slug: "agents", label: "AGENTS" },
 ];
 
 export function ProjectOverviewPage() {
