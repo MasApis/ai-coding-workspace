@@ -83,6 +83,8 @@ export async function updateProvider(db: AppDatabase, key: Buffer, id: string, i
       .values({ providerId: id, ...sealed })
       .onConflictDoUpdate({ target: providerSecrets.providerId, set: { ...sealed } })
       .run();
+  } else if (input.removeCredential === true) {
+    await db.delete(providerSecrets).where(eq(providerSecrets.providerId, id)).run();
   }
   return toDto((await requireProvider(db, id)) as ConfigRow, (await secretIds(db)).has(id));
 }

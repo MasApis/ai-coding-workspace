@@ -207,6 +207,7 @@ export function SettingsPage() {
         baseUrl: values.baseUrl || undefined,
         enabled: values.enabled,
         ...(values.credential ? { credential: values.credential } : {}),
+        ...(values.removeCredential ? { removeCredential: true as const } : {}),
       };
       return editing ? updateProvider(editing.id, payload) : createProvider(payload);
     },

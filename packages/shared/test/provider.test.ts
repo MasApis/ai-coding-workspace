@@ -43,5 +43,7 @@ describe("provider schemas", () => {
     expect(() => updatePreferencesSchema.parse({ providerId: "p1", modelId: "" })).toThrow();
     expect(updateModelsSchema.parse({ models: ["a", "b"] }).models).toEqual(["a", "b"]);
     expect(() => updateProviderSchema.parse({})).toThrow();
+    expect(updateProviderSchema.parse({ removeCredential: true }).removeCredential).toBe(true);
+    expect(() => updateProviderSchema.parse({ credential: "x", removeCredential: true })).toThrow();
   });
 });

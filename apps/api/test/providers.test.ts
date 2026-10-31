@@ -62,6 +62,24 @@ describe("providers API", () => {
     expect(unknown.statusCode).toBe(422);
   });
 
+  it("removes credentials explicitly without ever returning them", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/providers",
+      payload: { label: "R", protocol: "openai-compatible", baseUrl: "https://api.example.com/v1", credential: SECRET },
+    });
+    const id = created.json().data.id as string;
+    expect(created.json().data.hasCredential).toBe(true);
+
+    const removed = await app.inject({ method: "PATCH", url: `/api/providers/${id}`, payload: { removeCredential: true } });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json().data.hasCredential).toBe(false);
+    expect(removed.body).not.toContain(SECRET);
+
+    const listed = await app.inject({ method: "GET", url: "/api/providers" });
+    expect(listed.body).not.toContain(SECRET);
+  });
+
   it("rotates credentials and deletes cleanly with preference cleanup", async () => {
     const created = await app.inject({
       method: "POST",

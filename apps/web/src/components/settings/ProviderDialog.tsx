@@ -14,6 +14,7 @@ export interface ProviderFormValues {
   protocol: ProviderProtocol;
   baseUrl: string;
   credential: string;
+  removeCredential: boolean;
   enabled: boolean;
   testModel: string;
 }
@@ -37,6 +38,8 @@ export function ProviderDialog({
   const [protocol, setProtocol] = useState<ProviderProtocol>("openai-compatible");
   const [baseUrl, setBaseUrl] = useState("");
   const [credential, setCredential] = useState("");
+  const [changingKey, setChangingKey] = useState(false);
+  const [removeKey, setRemoveKey] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [testModel, setTestModel] = useState("");
   const [testResult, setTestResult] = useState<ConnectionTest | null>(null);
@@ -49,6 +52,8 @@ export function ProviderDialog({
       setProtocol(initial?.protocol ?? "openai-compatible");
       setBaseUrl(initial?.baseUrl ?? "");
       setCredential("");
+      setChangingKey(initial === null);
+      setRemoveKey(false);
       setEnabled(initial?.enabled ?? true);
       setTestModel("");
       setTestResult(null);
@@ -86,7 +91,7 @@ export function ProviderDialog({
       onClose={onClose}
       confirmLabel={pending ? "Menyimpan…" : "Simpan"}
       onConfirm={() => {
-        if (canSave) onSubmit({ label: label.trim(), protocol, baseUrl: baseUrl.trim(), credential, enabled, testModel: testModel.trim() });
+        if (canSave) onSubmit({ label: label.trim(), protocol, baseUrl: baseUrl.trim(), credential, removeCredential: removeKey, enabled, testModel: testModel.trim() });
       }}
     >
       <div className="flex flex-col gap-4">
@@ -105,15 +110,52 @@ export function ProviderDialog({
           placeholder="https://… atau http://127.0.0.1:11434"
           hint="HTTPS untuk remote; HTTP hanya untuk loopback."
         />
-        <TextInput
-          label={initial ? "Kredensial baru" : "Kredensial (API key)"}
-          type="password"
-          value={credential}
-          onChange={(e) => setCredential(e.target.value)}
-          placeholder={initial ? "Kosongkan bila tidak diubah" : "sk-…"}
-          hint="Tidak pernah ditampilkan kembali setelah disimpan."
-          autoComplete="off"
-        />
+        {initial === null || changingKey ? (
+          <TextInput
+            label={initial ? "Kredensial baru" : "Kredensial (API key)"}
+            type="password"
+            value={credential}
+            onChange={(e) => setCredential(e.target.value)}
+            placeholder={initial ? "Tempel kunci baru di sini" : "sk-…"}
+            hint="Tidak pernah ditampilkan kembali setelah disimpan."
+            autoComplete="off"
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 rounded-control border border-line bg-canvas px-3 py-2 text-sm">
+            <span aria-label="Kunci tersimpan">Kunci tersimpan ••••••••</span>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => { setChangingKey(true); setRemoveKey(false); }}>
+                Ganti kunci
+              </Button>
+              {initial.hasCredential && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setRemoveKey((v) => !v);
+                    setCredential("");
+                  }}
+                  aria-pressed={removeKey}
+                >
+                  {removeKey ? "Batal hapus kunci" : "Hapus kunci"}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {changingKey && initial !== null && (
+          <div>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setChangingKey(false);
+                setCredential("");
+                setRemoveKey(false);
+              }}
+            >
+              Batal ganti
+            </Button>
+          </div>
+        )}
         <label className="flex min-h-0 items-center gap-2 text-sm">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-5 w-5 accent-[#4F46E5]" />
           Aktif

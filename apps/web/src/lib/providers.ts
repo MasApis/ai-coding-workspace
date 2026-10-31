@@ -6,6 +6,7 @@ export interface ProviderForm {
   protocol: ProviderProtocol;
   baseUrl?: string;
   credential?: string;
+  removeCredential?: boolean;
   enabled: boolean;
 }
 

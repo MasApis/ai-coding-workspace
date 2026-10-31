@@ -46,10 +46,14 @@ export const updateProviderSchema = z
     label: z.string().min(1).max(120).optional(),
     baseUrl: baseUrlSchema.optional(),
     credential: z.string().min(1).max(10000).optional(),
+    removeCredential: z.boolean().optional(),
     enabled: z.boolean().optional(),
   })
   .strict()
-  .refine((v) => Object.keys(v).length > 0, { message: "empty update" });
+  .refine((v) => Object.keys(v).length > 0, { message: "empty update" })
+  .refine((v) => !(v.credential !== undefined && v.removeCredential === true), {
+    message: "credential and removeCredential are mutually exclusive",
+  });
 
 export const updateModelsSchema = z
   .object({ models: z.array(z.string().min(1).max(200)).max(200) })
