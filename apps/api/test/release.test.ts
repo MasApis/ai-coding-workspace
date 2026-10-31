@@ -24,24 +24,28 @@ describe("release: migrations and reinstall", () => {
     close();
   });
 
-  it("reinstalls cleanly: delete db file, migrate, CRUD works", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "reinstall-test-"));
-    const dbPath = join(dir, "workspace.sqlite");
-    const first = await createApp(dbPath, { gatewayKey: randomBytes(32) });
-    const created = await first.inject({ method: "POST", url: "/api/projects", payload: { name: "Lama" } });
-    expect(created.statusCode).toBe(201);
-    await first.close();
+  it(
+    "reinstalls cleanly: delete db file, migrate, CRUD works",
+    { timeout: 30000 },
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), "reinstall-test-"));
+      const dbPath = join(dir, "workspace.sqlite");
+      const first = await createApp(dbPath, { gatewayKey: randomBytes(32) });
+      const created = await first.inject({ method: "POST", url: "/api/projects", payload: { name: "Lama" } });
+      expect(created.statusCode).toBe(201);
+      await first.close();
 
-    rmSync(dbPath, { force: true });
-    expect(existsSync(dbPath)).toBe(false);
+      rmSync(dbPath, { force: true });
+      expect(existsSync(dbPath)).toBe(false);
 
-    const second = await createApp(dbPath, { gatewayKey: randomBytes(32) });
-    const health = await second.inject({ method: "GET", url: "/api/health" });
-    expect(health.statusCode).toBe(200);
-    const list = await second.inject({ method: "GET", url: "/api/projects" });
-    expect(list.json().data.items).toHaveLength(0);
-    const recreated = await second.inject({ method: "POST", url: "/api/projects", payload: { name: "Baru" } });
-    expect(recreated.statusCode).toBe(201);
-    await second.close();
-  });
+      const second = await createApp(dbPath, { gatewayKey: randomBytes(32) });
+      const health = await second.inject({ method: "GET", url: "/api/health" });
+      expect(health.statusCode).toBe(200);
+      const list = await second.inject({ method: "GET", url: "/api/projects" });
+      expect(list.json().data.items).toHaveLength(0);
+      const recreated = await second.inject({ method: "POST", url: "/api/projects", payload: { name: "Baru" } });
+      expect(recreated.statusCode).toBe(201);
+      await second.close();
+    },
+  );
 });

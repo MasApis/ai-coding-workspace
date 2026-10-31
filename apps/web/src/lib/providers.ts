@@ -21,9 +21,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(0, "NETWORK_ERROR", "Tidak dapat menghubungi server lokal.");
   }
   if (res.status === 204) return undefined as T;
-  const body = (await res.json()) as { data?: T; error?: { code: string; message: string } };
+  const body = (await res.json()) as { data?: T; error?: { code: string; message: string; details?: unknown } };
   if (!res.ok || body.error) {
-    throw new ApiError(res.status, body.error?.code ?? "UNKNOWN_ERROR", body.error?.message ?? "Terjadi kesalahan.");
+    throw new ApiError(res.status, body.error?.code ?? "UNKNOWN_ERROR", body.error?.message ?? "Terjadi kesalahan.", body.error?.details);
   }
   return body.data as T;
 }
@@ -48,6 +48,58 @@ export interface ConnectionTest {
   ok: boolean;
   message: string;
   modelsAvailable: boolean;
+}
+
+export interface UpdateProviderPayload {
+  label: string;
+  baseUrl?: string;
+  credential?: string;
+  removeCredential?: boolean;
+  enabled: boolean;
+}
+
+// Builds the exact PATCH body: protocol and other dialog-only fields must
+// never be sent (the server schema is strict and rejects unknown keys).
+export function buildUpdatePayload(input: {
+  label: string;
+  baseUrl: string;
+  credential: string;
+  removeCredential: boolean;
+  enabled: boolean;
+}): UpdateProviderPayload {
+  return {
+    label: input.label,
+    ...(input.baseUrl ? { baseUrl: input.baseUrl } : {}),
+    ...(input.credential ? { credential: input.credential } : {}),
+    ...(input.removeCredential ? { removeCredential: true as const } : {}),
+    enabled: input.enabled,
+  };
+}
+
+// Flattens a zod treeifyError payload into readable "field: message" lines.
+export function formatValidationDetails(err: unknown): string[] {
+  if (!(err instanceof ApiError) || err.code !== "VALIDATION_ERROR") return [];
+  const details = err.details as { errors?: unknown; properties?: Record<string, { errors?: unknown }> } | null | undefined;
+  if (!details || typeof details !== "object") return [];
+  const lines: string[] = [];
+  if (Array.isArray(details.errors)) {
+    for (const e of details.errors) {
+      if (typeof e === "string" && e) lines.push(e);
+    }
+  }
+  if (details.properties && typeof details.properties === "object") {
+    for (const [field, value] of Object.entries(details.properties)) {
+      const errs = (value as { errors?: unknown }).errors;
+      if (Array.isArray(errs)) {
+        for (const e of errs) {
+          if (typeof e === "string" && e) lines.push(`${field}: ${e}`);
+        }
+      } else {
+        lines.push(`${field}: tidak valid`);
+      }
+    }
+  }
+  return lines;
 }
 
 export interface EffectiveSelection {

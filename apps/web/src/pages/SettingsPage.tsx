@@ -14,8 +14,10 @@ import { backupDownloadUrl, friendlyBackupError, importBackup } from "../lib/bac
 import { clearFallback, getFallback, getUsage, setFallback } from "../lib/usage.js";
 import { useProjects } from "../hooks/useProjects.js";
 import {
+  buildUpdatePayload,
   createProvider,
   deleteProvider,
+  formatValidationDetails,
   friendlyProviderError,
   getGlobalPreference,
   listProviders,
@@ -185,6 +187,7 @@ export function SettingsPage() {
   const [editing, setEditing] = useState<ProviderDto | null>(null);
   const [deleting, setDeleting] = useState<ProviderDto | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formDetails, setFormDetails] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
   const [fallbackModel, setFallbackModel] = useState("");
 
@@ -194,6 +197,7 @@ export function SettingsPage() {
 
   async function refresh(): Promise<void> {
     setFormError(null);
+    setFormDetails([]);
     await queryClient.invalidateQueries({ queryKey: ["providers"] });
     await queryClient.invalidateQueries({ queryKey: ["ai-preferences"] });
     await queryClient.invalidateQueries({ queryKey: ["ai-fallback"] });
@@ -201,22 +205,27 @@ export function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (values: ProviderFormValues) => {
+      if (editing) {
+        return updateProvider(editing.id, buildUpdatePayload(values));
+      }
       const payload = {
         label: values.label,
         protocol: values.protocol,
         baseUrl: values.baseUrl || undefined,
         enabled: values.enabled,
         ...(values.credential ? { credential: values.credential } : {}),
-        ...(values.removeCredential ? { removeCredential: true as const } : {}),
       };
-      return editing ? updateProvider(editing.id, payload) : createProvider(payload);
+      return createProvider(payload);
     },
     onSuccess: () => {
       setDialogOpen(false);
       setEditing(null);
       void refresh();
     },
-    onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan gagal."),
+    onError: (err) => {
+      setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan gagal.");
+      setFormDetails(err instanceof ApiError ? formatValidationDetails(err) : []);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -406,6 +415,7 @@ export function SettingsPage() {
         initial={editing}
         pending={saveMutation.isPending}
         error={formError}
+        errorDetails={formDetails}
         onClose={() => {
           setDialogOpen(false);
           setEditing(null);

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../src/lib/api.js";
 import {
+  buildUpdatePayload,
   createProvider,
   deleteProvider,
+  formatValidationDetails,
   friendlyProviderError,
   getGlobalPreference,
   listModels,
@@ -64,6 +67,32 @@ describe("providers client", () => {
     mockFetchOnce(null, 204);
     await deleteProvider("1");
     expect(fetch).toHaveBeenCalledWith("/api/providers/1", expect.objectContaining({ method: "DELETE" }));
+  });
+
+  it("builds update payloads without immutable or dialog-only fields", () => {
+    const payload = buildUpdatePayload({
+      label: "R",
+      baseUrl: "https://x.example/v1",
+      credential: "",
+      removeCredential: false,
+      enabled: true,
+    });
+    expect(payload).toEqual({ label: "R", baseUrl: "https://x.example/v1", enabled: true });
+    expect(payload).not.toHaveProperty("protocol");
+    const withKey = buildUpdatePayload({ label: "R", baseUrl: "", credential: "sk-1", removeCredential: false, enabled: true });
+    expect(withKey).toEqual({ label: "R", credential: "sk-1", enabled: true });
+    const removal = buildUpdatePayload({ label: "R", baseUrl: "", credential: "", removeCredential: true, enabled: true });
+    expect(removal).toEqual({ label: "R", removeCredential: true, enabled: true });
+  });
+
+  it("formats validation details into field messages", () => {
+    const err = new ApiError(422, "VALIDATION_ERROR", "invalid input", {
+      errors: [],
+      properties: { baseUrl: { errors: ["must be https"] }, label: { errors: ["too short"] } },
+    });
+    expect(formatValidationDetails(err)).toEqual(["baseUrl: must be https", "label: too short"]);
+    expect(formatValidationDetails(new ApiError(500, "UNKNOWN_ERROR", "x"))).toEqual([]);
+    expect(formatValidationDetails(new Error("y"))).toEqual([]);
   });
 
   it("maps error codes to understandable messages", () => {

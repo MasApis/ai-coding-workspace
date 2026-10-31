@@ -24,6 +24,7 @@ export function ProviderDialog({
   initial,
   pending,
   error,
+  errorDetails,
   onClose,
   onSubmit,
 }: {
@@ -31,6 +32,7 @@ export function ProviderDialog({
   initial: ProviderDto | null;
   pending: boolean;
   error: string | null;
+  errorDetails?: string[] | null;
   onClose: () => void;
   onSubmit: (values: ProviderFormValues) => void;
 }) {
@@ -196,9 +198,16 @@ export function ProviderDialog({
         )}
 
         {error && (
-          <p role="alert" className="text-sm text-error">
-            {error}
-          </p>
+          <div role="alert" className="text-sm text-error">
+            <p>{error}</p>
+            {errorDetails && errorDetails.length > 0 && (
+              <ul className="mt-1 list-disc pl-5">
+                {errorDetails.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </Dialog>
