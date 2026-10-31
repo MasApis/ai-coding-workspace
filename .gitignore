@@ -3,6 +3,8 @@ dist/
 data/
 .env
 *.local
+# Local AI-agent instructions; never published.
+AGENTS.md
 apps/web/e2e/screenshots/
 apps/web/test-results/
 apps/web/playwright-report/
