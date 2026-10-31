@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import Fastify, { type FastifyInstance } from "fastify";
 import { openDatabase } from "./db/connection.js";
 import { errorBody } from "./http/errors.js";
@@ -30,6 +31,7 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
   });
 
   await app.register(cors, { origin: [WEB_ORIGIN] });
+  await app.register(helmet, { contentSecurityPolicy: false });
 
   app.get("/api/health", async (_request, reply) => {
     return reply.send({ data: { status: "ok" } });
@@ -49,6 +51,10 @@ export async function createApp(dbPath?: string, opts?: { gatewayKey?: Buffer })
 
   app.setErrorHandler((err, _request, reply) => {
     if (reply.sent) return;
+    if (typeof err === "object" && err !== null && (err as { code?: string }).code === "FST_ERR_CTP_BODY_TOO_LARGE") {
+      void reply.code(413).send(errorBody("PAYLOAD_TOO_LARGE", "request body exceeds the 10 MB limit"));
+      return;
+    }
     console.error(err);
     void reply.code(500).send(errorBody("INTERNAL_ERROR", "internal server error"));
   });
