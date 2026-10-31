@@ -7,6 +7,7 @@ import { Skeleton } from "../components/Skeleton.js";
 import { ApiError } from "../lib/api.js";
 import { createConversation, listConversations, listMessages, streamChatMessage, type ContextDocRef } from "../lib/chat.js";
 import { getEffectiveSelection, listModels } from "../lib/providers.js";
+import { getUsage } from "../lib/usage.js";
 import { listDocuments } from "../lib/documents.js";
 import { BackToProjects, PageHeader } from "./PageBits.js";
 
@@ -47,6 +48,9 @@ export function ChatPage() {
   const selectionQuery = useQuery({ queryKey: ["ai-selection", projectId], queryFn: () => getEffectiveSelection(projectId), enabled: !!projectId });
   const selection = selectionQuery.data ?? null;
 
+  const usageQuery = useQuery({ queryKey: ["ai-usage", projectId], queryFn: () => getUsage(projectId), enabled: !!projectId, staleTime: 10000 });
+  const usage = usageQuery.data ?? null;
+
   const docsQuery = useQuery({ queryKey: ["documents", projectId], queryFn: () => listDocuments(projectId ?? ""), enabled: !!projectId });
   const docs = docsQuery.data ?? [];
 
@@ -76,6 +80,7 @@ export function ChatPage() {
   async function refresh(): Promise<void> {
     await queryClient.invalidateQueries({ queryKey: ["conversations", projectId] });
     await queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+    await queryClient.invalidateQueries({ queryKey: ["ai-usage", projectId] });
   }
 
   async function send(content: string): Promise<void> {
@@ -130,9 +135,16 @@ export function ChatPage() {
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <PageHeader title="Chat AI" description={selection ? `Model: ${modelOverride.trim() || selection.modelId}` : "Pilih atau mulai percakapan."} />
-        <Link to="/settings" className="text-sm text-accent hover:underline">
-          Ubah default →
-        </Link>
+        <div className="flex flex-col items-end gap-1">
+          <Link to="/settings" className="text-sm text-accent hover:underline">
+            Ubah default →
+          </Link>
+          {usage && (usage.requests > 0 || usage.errors > 0) && (
+            <p className="text-xs text-ink-soft" role="status">
+              Proyek ini: {usage.requests} permintaan AI, {usage.errors} gagal
+            </p>
+          )}
+        </div>
       </div>
 
       {!selection && !selectionQuery.isPending && (

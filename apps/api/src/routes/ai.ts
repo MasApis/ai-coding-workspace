@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "@workspace/shared";
-import { chatStreamRequestSchema } from "@workspace/shared";
+import { chatStreamRequestSchema, updatePreferencesSchema } from "@workspace/shared";
 import type { AppDatabase } from "../db/connection.js";
 import { GatewayError, gatewayHttpStatus } from "../ai/errors.js";
 import { getEffectiveSelection, resolveChatTarget, streamChatEvents } from "../ai/gateway.js";
 import { getAdapter } from "../ai/registry.js";
 import { readCredential } from "../services/providerService.js";
+import { clearPreferences, getPreferences, setPreferences } from "../services/providerService.js";
+import { recordAiRequest, getUsageSummary } from "../services/aiUsage.js";
 import { HttpError, errorBody } from "../http/errors.js";
+import { getProject } from "../services/projectService.js";
 import { providerConfigs } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
@@ -86,6 +89,74 @@ export async function aiRoutes(app: FastifyInstance, db: AppDatabase, key: Buffe
     }
   });
 
+  app.get("/api/ai/usage", async (request, reply) => {
+    try {
+      const query = request.query as { projectId?: unknown };
+      const projectId = typeof query.projectId === "string" && query.projectId.length > 0 ? query.projectId : undefined;
+      return reply.send({ data: await getUsageSummary(db, projectId) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/api/ai/fallback", async (_request, reply) => {
+    try {
+      return reply.send({ data: await getPreferences(db, "global-fallback", null) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.put("/api/ai/fallback", async (request, reply) => {
+    try {
+      const input = updatePreferencesSchema.parse(request.body);
+      return reply.send({ data: await setPreferences(db, "global-fallback", null, input.providerId, input.modelId) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.delete("/api/ai/fallback", async (_request, reply) => {
+    try {
+      await clearPreferences(db, "global-fallback", null);
+      return reply.code(204).send();
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/api/projects/:id/ai-fallback", async (request, reply) => {
+    try {
+      const id = (request.params as { id: string }).id;
+      await getProject(db, id);
+      return reply.send({ data: await getPreferences(db, "project-fallback", id) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.put("/api/projects/:id/ai-fallback", async (request, reply) => {
+    try {
+      const id = (request.params as { id: string }).id;
+      await getProject(db, id);
+      const input = updatePreferencesSchema.parse(request.body);
+      return reply.send({ data: await setPreferences(db, "project-fallback", id, input.providerId, input.modelId) });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.delete("/api/projects/:id/ai-fallback", async (request, reply) => {
+    try {
+      const id = (request.params as { id: string }).id;
+      await getProject(db, id);
+      await clearPreferences(db, "project-fallback", id);
+      return reply.code(204).send();
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
   app.post("/api/ai/chat/stream", async (request, reply) => {
     let parsed;
     try {
@@ -119,6 +190,9 @@ export async function aiRoutes(app: FastifyInstance, db: AppDatabase, key: Buffe
     request.raw.on("close", onClose);
 
     send({ type: "start", requestId, providerId: target.config.id, model: target.target.model });
+    const startedAt = new Date();
+    let inputTokens: number | undefined;
+    let outputTokens: number | undefined;
     try {
       for await (const event of streamChatEvents(db, key, parsed, aborter.signal)) {
         if (event.type === "done") {
@@ -126,10 +200,31 @@ export async function aiRoutes(app: FastifyInstance, db: AppDatabase, key: Buffe
         } else if (event.type === "delta") {
           send({ type: "delta", requestId, text: event.text });
         } else {
+          inputTokens = event.inputTokens ?? inputTokens;
+          outputTokens = event.outputTokens ?? outputTokens;
           send({ type: "usage", requestId, inputTokens: event.inputTokens, outputTokens: event.outputTokens });
         }
       }
+      await recordAiRequest(db, {
+        projectId: parsed.projectId ?? null,
+        providerId: target.config.id,
+        modelId: target.target.model,
+        status: "ok",
+        startedAt,
+        inputTokens,
+        outputTokens,
+      });
     } catch (err) {
+      if (!aborter.signal.aborted) {
+        await recordAiRequest(db, {
+          projectId: parsed.projectId ?? null,
+          providerId: target.config.id,
+          modelId: target.target.model,
+          status: "error",
+          errorCode: err instanceof GatewayError ? err.code : "UPSTREAM_ERROR",
+          startedAt,
+        });
+      }
       if (err instanceof GatewayError) {
         if (!raw.destroyed) send({ type: "error", requestId, code: err.code, message: err.message });
       } else if (!aborter.signal.aborted) {

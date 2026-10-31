@@ -35,6 +35,22 @@ function isNonRoutableIp(ip: string): boolean {
   return a === 0;
 }
 
+// Local-LAN endpoints (e.g. another machine's Ollama) are blocked by
+// default. Set ALLOW_LAN_PROVIDERS=true to opt in explicitly. The warning
+// is logged once per process so the opt-in stays visible.
+let lanWarningLogged = false;
+
+export function allowLanOrThrow(hostname: string): void {
+  if (process.env["ALLOW_LAN_PROVIDERS"] === "true") {
+    if (!lanWarningLogged) {
+      lanWarningLogged = true;
+      console.warn(`AI gateway: LAN endpoints explicitly allowed (ALLOW_LAN_PROVIDERS=true); host: ${hostname}`);
+    }
+    return;
+  }
+  throw new GatewayError("REMOTE_BLOCKED", "remote host address is not allowed");
+}
+
 // Runtime guard complementing config-time validation (AI-024): loopback
 // hosts pass (explicit exception); every other host must resolve to at
 // least one routable address. Residual DNS-rebinding TOCTOU is a known
@@ -44,7 +60,8 @@ export async function assertRoutableTarget(rawUrl: string): Promise<void> {
   if (isLoopbackHost(url.hostname)) return;
   if (isIP(url.hostname) !== 0) {
     if (isNonRoutableIp(url.hostname)) {
-      throw new GatewayError("REMOTE_BLOCKED", "remote host address is not allowed");
+      allowLanOrThrow(url.hostname);
+      return;
     }
     return;
   }
@@ -54,9 +71,10 @@ export async function assertRoutableTarget(rawUrl: string): Promise<void> {
   } catch {
     throw new GatewayError("UPSTREAM_NETWORK", "could not resolve remote host");
   }
-  if (!addresses.some((a) => !isNonRoutableIp(a.address))) {
-    throw new GatewayError("REMOTE_BLOCKED", "remote host resolves only to non-routable addresses");
-  }
+  const anyGlobal = addresses.some((a) => !isNonRoutableIp(a.address));
+  const anyLoopback = addresses.some((a) => isLoopbackHost(a.address));
+  if (anyGlobal || anyLoopback) return;
+  allowLanOrThrow(url.hostname);
 }
 
 function errorMessageOf(parsed: unknown): string | null {

@@ -5,6 +5,7 @@ import type { ResolvedProviderConfig, StreamEvent, TimeoutPolicy } from "../../a
 import { createDocument, createVersion, listDocuments } from "../documentService.js";
 import { getProject } from "../projectService.js";
 import { resolvePlanningProvider } from "../planning/planningService.js";
+import { recordAiRequest } from "../aiUsage.js";
 import { DESIGN_SECTIONS, buildDesignSectionPrompt, buildDesignSystemPrompt, truncate, validateDesignSpec } from "./prompts.js";
 
 export interface GeneratedDesign {
@@ -43,31 +44,48 @@ export async function generateDesignSpec(
   const { config, model } = await resolvePlanningProvider(db, key, projectId);
   const context = truncate(prd.contentMd, 12000);
   const upstream = [{ documentId: prd.id, versionNo: prd.currentVersionNo ?? 1 }];
+  const startedAt = new Date();
 
   const sections: string[] = [];
-  for (let i = 0; i < DESIGN_SECTIONS.length; i++) {
-    const section = DESIGN_SECTIONS[i]!;
-    opts.onProgress?.(i, DESIGN_SECTIONS.length, section.heading);
-    const text = await collectSection(
-      config,
-      model,
-      [
-        { role: "system", content: buildDesignSystemPrompt() },
-        { role: "user", content: buildDesignSectionPrompt(section, context) },
-      ],
-      opts.signal,
-      opts.timeouts,
-    );
-    if (text.length < 20) {
-      throw new GatewayError("MALFORMED_STREAM", `model returned an empty section: ${section.heading}`);
+  try {
+    for (let i = 0; i < DESIGN_SECTIONS.length; i++) {
+      const section = DESIGN_SECTIONS[i]!;
+      opts.onProgress?.(i, DESIGN_SECTIONS.length, section.heading);
+      const text = await collectSection(
+        config,
+        model,
+        [
+          { role: "system", content: buildDesignSystemPrompt() },
+          { role: "user", content: buildDesignSectionPrompt(section, context) },
+        ],
+        opts.signal,
+        opts.timeouts,
+      );
+      if (text.length < 20) {
+        throw new GatewayError("MALFORMED_STREAM", `model returned an empty section: ${section.heading}`);
+      }
+      sections.push(`## ${section.heading}\n\n${text}`);
+      opts.onProgress?.(i + 1, DESIGN_SECTIONS.length, section.heading);
     }
-    sections.push(`## ${section.heading}\n\n${text}`);
-    opts.onProgress?.(i + 1, DESIGN_SECTIONS.length, section.heading);
+  } catch (err) {
+    await recordAiRequest(db, {
+      projectId,
+      providerId: config.id,
+      modelId: model,
+      status: "error",
+      errorCode: err instanceof GatewayError ? err.code : "UPSTREAM_ERROR",
+      startedAt,
+    });
+    throw err;
   }
 
   const markdown = `# Spesifikasi Desain\n\n${sections.join("\n\n")}`;
   const problem = validateDesignSpec(markdown);
-  if (problem) throw new GatewayError("MALFORMED_STREAM", problem);
+  if (problem) {
+    await recordAiRequest(db, { projectId, providerId: config.id, modelId: model, status: "error", errorCode: "MALFORMED_STREAM", startedAt });
+    throw new GatewayError("MALFORMED_STREAM", problem);
+  }
+  await recordAiRequest(db, { projectId, providerId: config.id, modelId: model, status: "ok", startedAt });
 
   const existing = docs.find((d) => d.type === "DESIGN_SPEC");
   const versionInput = { contentMd: markdown, origin: "ai" as const, fromApproved: opts.fromApproved ?? false };

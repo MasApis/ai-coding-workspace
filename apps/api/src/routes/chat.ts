@@ -10,6 +10,7 @@ import type { ChatMessage } from "../ai/types.js";
 import { HttpError, errorBody } from "../http/errors.js";
 import { createMessage, getConversation, listMessages } from "../services/conversationService.js";
 import { resolveContextDocs } from "../services/documentService.js";
+import { recordAiRequest } from "../services/aiUsage.js";
 
 function sendError(reply: FastifyReply, err: unknown): void {
   if (err instanceof GatewayError) {
@@ -124,7 +125,10 @@ export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buf
 
     send({ type: "start", requestId, messageId: userMessageId, providerId: target.config.id, model: target.target.model });
     const adapter = getAdapter(target.config.protocol);
+    const startedAt = new Date();
     let text = "";
+    let inputTokens: number | undefined;
+    let outputTokens: number | undefined;
     try {
       for await (const event of adapter.streamChat(
         target.config,
@@ -135,6 +139,8 @@ export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buf
           text += event.text;
           if (!raw.destroyed) send({ type: "delta", requestId, text: event.text });
         } else if (event.type === "usage" && !raw.destroyed) {
+          inputTokens = event.inputTokens ?? inputTokens;
+          outputTokens = event.outputTokens ?? outputTokens;
           send({ type: "usage", requestId, inputTokens: event.inputTokens, outputTokens: event.outputTokens });
         }
       }
@@ -148,8 +154,27 @@ export async function chatRoutes(app: FastifyInstance, db: AppDatabase, key: Buf
         modelId: target.target.model,
         contextManifest: manifest.length > 0 ? { upstream: manifest } : undefined,
       });
+      await recordAiRequest(db, {
+        projectId: conversation.projectId,
+        providerId: target.config.id,
+        modelId: target.target.model,
+        status: "ok",
+        startedAt,
+        inputTokens,
+        outputTokens,
+      });
       if (!raw.destroyed) send({ type: "complete", requestId, messageId: saved.id });
     } catch (err) {
+      if (!aborter.signal.aborted) {
+        await recordAiRequest(db, {
+          projectId: conversation.projectId,
+          providerId: target.config.id,
+          modelId: target.target.model,
+          status: "error",
+          errorCode: err instanceof GatewayError ? err.code : "UPSTREAM_ERROR",
+          startedAt,
+        });
+      }
       if (!raw.destroyed) {
         if (err instanceof GatewayError) {
           send({ type: "error", requestId, code: err.code, message: err.message });

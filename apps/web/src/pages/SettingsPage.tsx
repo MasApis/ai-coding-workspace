@@ -11,6 +11,7 @@ import { Select, TextInput } from "../components/TextField.js";
 import { ProviderDialog, type ProviderFormValues } from "../components/settings/ProviderDialog.js";
 import { ApiError } from "../lib/api.js";
 import { backupDownloadUrl, friendlyBackupError, importBackup } from "../lib/backup.js";
+import { clearFallback, getFallback, getUsage, setFallback } from "../lib/usage.js";
 import { useProjects } from "../hooks/useProjects.js";
 import {
   createProvider,
@@ -112,6 +113,72 @@ function BackupSection() {
   );
 }
 
+function FallbackForm({
+  providers,
+  fallback,
+  fallbackModel,
+  onFallbackModel,
+  onSave,
+  onClear,
+  saving,
+}: {
+  providers: ProviderDto[];
+  fallback: { providerId: string; modelId: string } | null;
+  fallbackModel: string;
+  onFallbackModel: (value: string) => void;
+  onSave: (providerId: string, modelId: string) => void;
+  onClear: () => void;
+  saving: boolean;
+}) {
+  return (
+    <form
+      className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        const providerId = String(form.get("fallback-provider") ?? "");
+        const modelId = fallbackModel.trim();
+        if (providerId && modelId) onSave(providerId, modelId);
+      }}
+    >
+      <h3 className="text-sm font-semibold">Cadangan bila provider utama tak tersedia (opsional)</h3>
+      {fallback ? (
+        <p className="text-sm text-ink-soft">
+          Aktif: <span className="font-mono">{fallback.modelId}</span> pada provider{" "}
+          <span className="font-mono">{providers.find((p) => p.id === fallback.providerId)?.label ?? fallback.providerId}</span>
+        </p>
+      ) : (
+        <p className="text-sm text-ink-soft">Mati. Tanpa cadangan, permintaan gagal jujur bila provider utama hilang.</p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select label="Provider cadangan" name="fallback-provider" defaultValue={fallback?.providerId ?? ""}>
+          <option value="" disabled>
+            Pilih provider…
+          </option>
+          {providers
+            .filter((p) => p.enabled)
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+        </Select>
+        <TextInput label="ID Model cadangan" value={fallbackModel} onChange={(e) => onFallbackModel(e.target.value)} placeholder="cth. llama3" />
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" variant="secondary" disabled={!fallbackModel.trim() || saving}>
+          {saving ? "Menyimpan…" : "Simpan cadangan"}
+        </Button>
+        {fallback && (
+          <Button type="button" variant="ghost" onClick={onClear}>
+            Matikan
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export function SettingsPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -119,14 +186,17 @@ export function SettingsPage() {
   const [deleting, setDeleting] = useState<ProviderDto | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [defaultModel, setDefaultModel] = useState("");
+  const [fallbackModel, setFallbackModel] = useState("");
 
   const providersQuery = useQuery({ queryKey: ["providers"], queryFn: listProviders });
   const prefQuery = useQuery({ queryKey: ["ai-preferences"], queryFn: getGlobalPreference });
+  const fallbackQuery = useQuery({ queryKey: ["ai-fallback"], queryFn: getFallback });
 
   async function refresh(): Promise<void> {
     setFormError(null);
     await queryClient.invalidateQueries({ queryKey: ["providers"] });
     await queryClient.invalidateQueries({ queryKey: ["ai-preferences"] });
+    await queryClient.invalidateQueries({ queryKey: ["ai-fallback"] });
   }
 
   const saveMutation = useMutation({
@@ -169,8 +239,21 @@ export function SettingsPage() {
     onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan default gagal."),
   });
 
+  const fallbackMutation = useMutation({
+    mutationFn: ({ providerId, modelId }: { providerId: string; modelId: string }) => setFallback(providerId, modelId),
+    onSuccess: () => void refresh(),
+    onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan fallback gagal."),
+  });
+
+  const clearFallbackMutation = useMutation({
+    mutationFn: () => clearFallback(),
+    onSuccess: () => void refresh(),
+    onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penghapusan fallback gagal."),
+  });
+
   const providers = providersQuery.data ?? [];
   const preference = prefQuery.data ?? null;
+  const fallback = fallbackQuery.data ?? null;
 
   return (
     <div>
@@ -298,6 +381,17 @@ export function SettingsPage() {
               </Button>
             </div>
           </form>
+        )}
+        {providers.length > 0 && (
+          <FallbackForm
+            providers={providers}
+            fallback={fallback}
+            fallbackModel={fallbackModel}
+            onFallbackModel={setFallbackModel}
+            onSave={(providerId, modelId) => fallbackMutation.mutate({ providerId, modelId })}
+            onClear={() => clearFallbackMutation.mutate()}
+            saving={fallbackMutation.isPending}
+          />
         )}
       </section>
 

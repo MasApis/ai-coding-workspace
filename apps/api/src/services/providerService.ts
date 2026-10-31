@@ -29,6 +29,8 @@ function toDto(row: ConfigRow, hasCredential: boolean): ProviderDto {
   };
 }
 
+export type PreferenceScope = "global" | "project" | "global-fallback" | "project-fallback";
+
 async function secretIds(db: AppDatabase): Promise<Set<string>> {
   const rows = await db.select({ providerId: providerSecrets.providerId }).from(providerSecrets).all();
   return new Set(rows.map((r) => r.providerId));
@@ -116,13 +118,13 @@ async function requireUsableProvider(db: AppDatabase, providerId: string): Promi
 
 export async function setPreferences(
   db: AppDatabase,
-  scopeType: "global" | "project",
+  scopeType: PreferenceScope,
   scopeId: string | null,
   providerId: string,
   modelId: string,
 ): Promise<AiPreferencesDto> {
   await requireUsableProvider(db, providerId);
-  if (scopeType === "project" && scopeId !== null) {
+  if ((scopeType === "project" || scopeType === "project-fallback") && scopeId !== null) {
     await getProject(db, scopeId);
   }
   const existing = await db
@@ -142,7 +144,18 @@ export async function setPreferences(
   return { providerId, modelId };
 }
 
-export async function getPreferences(db: AppDatabase, scopeType: "global" | "project", scopeId: string | null): Promise<AiPreferencesDto> {
+export async function clearPreferences(db: AppDatabase, scopeType: PreferenceScope, scopeId: string | null): Promise<void> {
+  await db
+    .delete(aiPreferences)
+    .where(
+      scopeId === null
+        ? and(eq(aiPreferences.scopeType, scopeType), isNull(aiPreferences.scopeId))
+        : and(eq(aiPreferences.scopeType, scopeType), eq(aiPreferences.scopeId, scopeId)),
+    )
+    .run();
+}
+
+export async function getPreferences(db: AppDatabase, scopeType: PreferenceScope, scopeId: string | null): Promise<AiPreferencesDto> {
   const row = await db
     .select()
     .from(aiPreferences)

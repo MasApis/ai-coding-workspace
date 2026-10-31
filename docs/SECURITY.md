@@ -23,6 +23,11 @@ Status: hidup berdampingan dengan kode. Setiap klaim di bawah ditautkan ke test 
 | Isolasi proyek | cek `projectId` di semua query nested | `documents/conversations/chat-context.test.ts` |
 | Kunci secret 0600, di luar DB | `secrets.ts` (AES-256-GCM, `AI_GATEWAY_KEY` atau file) | `providers.test.ts` (redaksi di semua respons) |
 
+## Kebijakan LAN (AI-029)
+- Custom endpoint remote wajib HTTPS + host global-unicast. Loopback (`127.0.0.1`, `::1`, `localhost`) bebas — untuk Ollama lokal.
+- IP privat/link-local literal maupun hasil DNS non-routabel → `REMOTE_BLOCKED`, kecuali `ALLOW_LAN_PROVIDERS=true` (opt-in eksplisit, tercatat sekali via peringatan log saat dipakai).
+- TOCTOU DNS-rebinding tetap risiko terbuka (lihat di bawah).
+
 ## Risiko terbuka (jujur, bukan TODO diam-diam)
 1. **TOCTOU DNS-rebinding**: cek DNS saat request vs connect bisa berpacu. Milik AI-029 (custom agent + pinning).
 2. **Backup JSON plaintext**: siapa pun membaca file backup melihat seluruh isi proyek. Mitigasi: simpan di media terenkripsi; dienkripsi resmi menunggu keputusan desain (AI-029).
