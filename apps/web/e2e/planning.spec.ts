@@ -19,6 +19,9 @@ test("manual edit, review, and approve flow", async ({ page, request }) => {
   await page.getByLabel("Isi Markdown").fill("# PRD E2E\n\nIsi awal.");
   await expect(page.getByText("Belum disimpan", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Simpan versi baru" }).click();
+  await expect(page.getByRole("heading", { name: "Tinjau perubahan" })).toBeVisible();
+  await expect(page.getByText(/baris ditambah/)).toBeVisible();
+  await page.getByRole("button", { name: "Ya, simpan" }).click();
   await expect(page.getByText("Draf v2")).toBeVisible({ timeout: 15000 });
 
   await page.getByRole("button", { name: "Tandai direview" }).click();
@@ -44,5 +47,7 @@ test("approved document requires an explicit new draft", async ({ page, request 
   const area = page.getByLabel("Isi Markdown");
   await area.fill("# v1\n\nPerubahan diam-diam.");
   await page.getByRole("button", { name: /Buat draf baru dari approved/ }).click();
+  await expect(page.getByRole("heading", { name: "Tinjau perubahan" })).toBeVisible();
+  await page.getByRole("button", { name: "Ya, simpan" }).click();
   await expect(page.getByText("Draf v2")).toBeVisible({ timeout: 15000 });
 });

@@ -1,4 +1,4 @@
-import { PLANNING_STEP_TYPES, type DocumentType } from "@workspace/shared";
+import { PLANNING_STEP_TYPES, type DocumentType, type DocumentVersionDto } from "@workspace/shared";
 
 export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   PROJECT_BRIEF: "Brief",
@@ -24,3 +24,10 @@ export function slugToType(slug: string | undefined): DocumentType | null {
   if (slug === "brief") return "PROJECT_BRIEF";
   return SLUG_TO_TYPE[slug] ?? null;
 }
+
+// Version origins are stored in English; the UI speaks Indonesian.
+export const VERSION_ORIGIN_LABELS: Record<DocumentVersionDto["origin"], string> = {
+  ai: "AI",
+  user: "Manual",
+  import: "Impor",
+};

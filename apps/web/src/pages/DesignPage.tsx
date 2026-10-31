@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
 import { Button, buttonClasses } from "../components/Button.js";
 import { Skeleton } from "../components/Skeleton.js";
-import { renderMarkdown } from "../lib/markdown.js";
+import { Markdown } from "../components/Markdown.js";
+import { TabList, tabPanelProps } from "../components/Tabs.js";
 import { fetchPrototypeHtml, friendlyDesignError, generateDesignStream, generatePrototype, getLatestPrototype, parseDesignSections, prototypeDownloadUrl } from "../lib/design.js";
 import { listDocuments } from "../lib/documents.js";
 import { ApiError } from "../lib/api.js";
@@ -32,6 +33,7 @@ export function DesignPage() {
   const [protoVersion, setProtoVersion] = useState<number | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
   const [protoLoading, setProtoLoading] = useState(false);
+  const panelId = useId();
   const abortRef = useRef<AbortController | null>(null);
 
   const docsQuery = useQuery({ queryKey: ["documents", projectId], queryFn: () => listDocuments(projectId ?? ""), enabled: !!projectId });
@@ -144,26 +146,18 @@ export function DesignPage() {
 
           {design && (
             <>
-              <div role="tablist" aria-label="Bagian desain" className="flex flex-wrap gap-1">
-                {TABS.map((t) => (
-                  <button
-                    key={t.id}
-                    role="tab"
-                    aria-selected={tab === t.id}
-                    onClick={() => setTab(t.id)}
-                    className={`rounded-control px-3 py-2 text-sm ${tab === t.id ? "bg-accent-soft font-medium text-accent" : "hover:bg-canvas"}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+              <TabList
+                label="Bagian desain"
+                items={TABS.map((t) => ({ id: t.id, label: t.label }))}
+                value={tab}
+                onChange={setTab}
+                panelId={panelId}
+                className="flex flex-wrap gap-1"
+              />
 
-              <section aria-label={activeTab.label} className="rounded-card border border-line bg-surface p-4">
+              <div {...tabPanelProps(panelId, tab)} className="rounded-card border border-line bg-surface p-4">
                 {tab === "preview" ? (
-                  <div
-                    className="max-w-none text-sm [&_code]:rounded [&_code]:bg-canvas [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_p]:my-2"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(design.contentMd ?? "") }}
-                  />
+                  <Markdown source={design.contentMd ?? ""} label="Pratinjau spesifikasi desain" />
                 ) : tab === "prototype" ? (
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -209,14 +203,11 @@ export function DesignPage() {
                   tabSections.map((s) => (
                     <article key={s.heading} className="mb-4">
                       <h3 className="text-sm font-semibold">{s.heading}</h3>
-                      <div
-                        className="mt-1 text-sm [&_li]:ml-4 [&_li]:list-disc [&_p]:my-1"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(s.body) }}
-                      />
+                      <Markdown source={s.body} className="mt-1 [&_p]:my-1" />
                     </article>
                   ))
                 )}
-              </section>
+              </div>
             </>
           )}
         </div>

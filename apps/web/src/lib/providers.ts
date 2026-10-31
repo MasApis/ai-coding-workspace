@@ -1,4 +1,4 @@
-import type { AiPreferencesDto, ModelPresetDto, ProviderDto, ProviderProtocol } from "@workspace/shared";
+import type { AiPreferencesDto, ProviderDto, ProviderProtocol } from "@workspace/shared";
 import { ApiError } from "./api.js";
 
 export interface ProviderForm {
@@ -125,8 +125,15 @@ export function testProvider(id: string, modelId?: string): Promise<ConnectionTe
   });
 }
 
-export function listModels(id: string): Promise<{ items: ModelPresetDto[]; modelsAvailable: boolean }> {
-  return request<{ items: ModelPresetDto[]; modelsAvailable: boolean }>(`/providers/${encodeURIComponent(id)}/models`);
+// The API returns live provider listings ({ id, label? }), not stored presets:
+// for OpenAI-compatible providers `id` is the model id reported by /v1/models.
+export interface ProviderModelInfo {
+  id: string;
+  label?: string;
+}
+
+export function listModels(id: string): Promise<{ items: ProviderModelInfo[]; modelsAvailable: boolean }> {
+  return request<{ items: ProviderModelInfo[]; modelsAvailable: boolean }>(`/providers/${encodeURIComponent(id)}/models`);
 }
 
 export function getGlobalPreference(): Promise<AiPreferencesDto | null> {

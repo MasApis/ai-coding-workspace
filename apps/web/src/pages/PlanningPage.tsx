@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useBlocker, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
 import { Button } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
+import { TabList, tabPanelProps } from "../components/Tabs.js";
 import { AIPanel } from "../components/planning/AIPanel.js";
 import { EditorPane } from "../components/planning/EditorPane.js";
 import { StepsList } from "../components/planning/StepsList.js";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { slugToType, DOCUMENT_LABELS } from "../lib/documentTypes.js";
 import { ApiError } from "../lib/api.js";
 import { approveDocument, createDocument, createVersion, friendlyDocumentError, listDocuments, listVersions, reviewDocument } from "../lib/documents.js";
+
+const MOBILE_TABS = [
+  { id: "steps", label: "Langkah" },
+  { id: "editor", label: "Editor" },
+  { id: "ai", label: "AI" },
+] as const;
 
 export function PlanningPage() {
   const { projectId, documentType } = useParams();
@@ -22,6 +30,8 @@ export function PlanningPage() {
   const [viewingVersionNo, setViewingVersionNo] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<"steps" | "editor" | "ai">("editor");
   const [approveOpen, setApproveOpen] = useState(false);
+  const panelId = useId();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const docsQuery = useQuery({ queryKey: ["documents", projectId], queryFn: () => listDocuments(projectId ?? ""), enabled: !!projectId });
   const docs = docsQuery.data ?? [];
@@ -99,7 +109,7 @@ export function PlanningPage() {
   const createMutation = useMutation({
     mutationFn: () => {
       if (!projectId || !type) throw new Error("no target");
-      return createDocument(projectId, { type, title: type, contentMd: "" });
+      return createDocument(projectId, { type, title: DOCUMENT_LABELS[type] ?? type, contentMd: "" });
     },
     onSuccess: () => void refresh(),
   });
@@ -121,70 +131,85 @@ export function PlanningPage() {
     );
   }
 
+  const stepsPane = docsQuery.isPending ? (
+    <Skeleton label="Memuat langkah…" />
+  ) : (
+    <StepsList projectId={projectId} docs={docs} selected={type} />
+  );
+
+  const editorPane = (
+    <>
+      {docsQuery.isPending && <Skeleton label="Memuat dokumen…" />}
+      {docsQuery.isError && (
+        <Alert variant="error" title="Dokumen tidak dapat dimuat">
+          Pastikan server API berjalan.
+        </Alert>
+      )}
+      {!docsQuery.isPending && !docsQuery.isError && !doc && (
+        <div className="flex flex-col gap-3">
+          <Alert variant="empty" title={`${DOCUMENT_LABELS[type]} belum ada`}>
+            Buat dokumen kosong lalu tulis manual, atau generate dengan AI.
+          </Alert>
+          <div>
+            <Button variant="secondary" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Membuat…" : "Buat kosong"}
+            </Button>
+          </div>
+        </div>
+      )}
+      {doc && (
+        <EditorPane
+          doc={doc}
+          versions={versions}
+          viewingVersionNo={viewingVersionNo}
+          content={content}
+          baseContent={baseContent}
+          dirty={dirty}
+          view={view}
+          saving={saveMutation.isPending}
+          saveError={saveError ?? (saveMutation.error ? friendlyDocumentError(saveMutation.error) : null)}
+          onContent={setContent}
+          onView={setView}
+          onSelectVersion={setViewingVersionNo}
+          onSave={(fromApproved) => void handleSave(fromApproved)}
+          onReview={() => reviewMutation.mutate()}
+          onApproveRequest={() => setApproveOpen(true)}
+        />
+      )}
+    </>
+  );
+
+  const aiPane = (
+    <AIPanel projectId={projectId} docType={type} hasDoc={!!doc} approved={doc?.approvalState === "approved"} onGenerated={() => void refresh()} />
+  );
+
   return (
     <div>
-      <div className="mb-4 flex gap-1 md:hidden" role="tablist" aria-label="Panel perencana">
-        {(["steps", "editor", "ai"] as const).map((tab) => (
-          <button
-            key={tab}
-            role="tab"
-            aria-selected={mobileTab === tab}
-            onClick={() => setMobileTab(tab)}
-            className={`flex-1 rounded-control px-3 py-2 text-sm ${mobileTab === tab ? "bg-accent-soft font-medium text-accent" : "bg-surface text-ink-soft"}`}
-          >
-            {tab === "steps" ? "Langkah" : tab === "editor" ? "Editor" : "AI"}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-[220px_1fr] xl:grid-cols-[220px_1fr_300px]">
-        <div className={mobileTab === "steps" ? "" : "hidden md:block"}>
-          {docsQuery.isPending ? <Skeleton label="Memuat langkah…" /> : <StepsList projectId={projectId} docs={docs} selected={type} />}
+      {isDesktop ? (
+        // Three columns side by side: no tab semantics, everything is visible.
+        <div className="grid gap-6 md:grid-cols-[220px_1fr] xl:grid-cols-[220px_1fr_300px]">
+          <div>{stepsPane}</div>
+          <div>{editorPane}</div>
+          <div>{aiPane}</div>
         </div>
-
-        <div className={mobileTab === "editor" ? "" : "hidden md:block"}>
-          {docsQuery.isPending && <Skeleton label="Memuat dokumen…" />}
-          {docsQuery.isError && (
-            <Alert variant="error" title="Dokumen tidak dapat dimuat">
-              Pastikan server API berjalan.
-            </Alert>
-          )}
-          {!docsQuery.isPending && !docsQuery.isError && !doc && (
-            <div className="flex flex-col gap-3">
-              <Alert variant="empty" title={`${DOCUMENT_LABELS[type]} belum ada`}>
-                Buat dokumen kosong lalu tulis manual, atau generate dengan AI.
-              </Alert>
-              <div>
-                <Button variant="secondary" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Membuat…" : "Buat kosong"}
-                </Button>
-              </div>
-            </div>
-          )}
-          {doc && (
-            <EditorPane
-              doc={doc}
-              versions={versions}
-              viewingVersionNo={viewingVersionNo}
-              content={content}
-              dirty={dirty}
-              view={view}
-              saving={saveMutation.isPending}
-              saveError={saveError ?? (saveMutation.error ? friendlyDocumentError(saveMutation.error) : null)}
-              onContent={setContent}
-              onView={setView}
-              onSelectVersion={setViewingVersionNo}
-              onSave={(fromApproved) => void handleSave(fromApproved)}
-              onReview={() => reviewMutation.mutate()}
-              onApproveRequest={() => setApproveOpen(true)}
-            />
-          )}
-        </div>
-
-        <div className={mobileTab === "ai" ? "" : "hidden xl:block"}>
-          <AIPanel projectId={projectId} docType={type} hasDoc={!!doc} approved={doc?.approvalState === "approved"} onGenerated={() => void refresh()} />
-        </div>
-      </div>
+      ) : (
+        <>
+          <TabList
+            label="Panel perencana"
+            items={MOBILE_TABS}
+            value={mobileTab}
+            onChange={setMobileTab}
+            panelId={panelId}
+            className="mb-4 flex gap-1"
+            tabClassName={(active) =>
+              `flex-1 rounded-control px-3 py-2 text-sm ${active ? "bg-accent-soft font-medium text-accent" : "bg-surface text-ink-soft"}`
+            }
+          />
+          <div {...tabPanelProps(panelId, mobileTab)}>
+            {mobileTab === "steps" ? stepsPane : mobileTab === "editor" ? editorPane : aiPane}
+          </div>
+        </>
+      )}
 
       <Dialog
         open={approveOpen}

@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
 import { Button } from "../components/Button.js";
+import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
+import { AssistantMessage } from "../components/chat/AssistantMessage.js";
+import { ModelPicker } from "../components/chat/ModelPicker.js";
 import { ApiError } from "../lib/api.js";
 import { createConversation, listConversations, listMessages, streamChatMessage, type ContextDocRef } from "../lib/chat.js";
-import { getEffectiveSelection, listModels } from "../lib/providers.js";
+import { getEffectiveSelection } from "../lib/providers.js";
 import { getUsage } from "../lib/usage.js";
 import { listDocuments } from "../lib/documents.js";
 
@@ -21,6 +24,7 @@ export function ChatPage() {
   const [lastContent, setLastContent] = useState<string | null>(null);
   const [modelOverride, setModelOverride] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<ContextDocRef[]>([]);
+  const [pendingInsert, setPendingInsert] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,6 +59,20 @@ export function ChatPage() {
 
   const docById = new Map(docs.map((d) => [d.id, d]));
 
+  function contextLabel(upstream: Array<{ documentId: string; versionNo: number }>): string {
+    return upstream.map((u) => `${docById.get(u.documentId)?.title ?? u.documentId} v${u.versionNo}`).join(", ");
+  }
+
+  function handleInsert(text: string): void {
+    // Inserting replaces the draft only with explicit confirmation, because
+    // an AI reply can be long and wiping a typed draft would lose work.
+    if (!draft.trim()) {
+      setDraft(text);
+      return;
+    }
+    setPendingInsert(text);
+  }
+
   function toggleDoc(documentId: string): void {
     setSelectedDocs((prev) => {
       const doc = docById.get(documentId);
@@ -65,12 +83,6 @@ export function ChatPage() {
       return [...prev, { documentId, versionNo: doc.currentVersionNo }];
     });
   }
-  const modelsQuery = useQuery({
-    queryKey: ["provider-models", selection?.providerId],
-    queryFn: () => listModels(selection?.providerId ?? ""),
-    enabled: !!selection,
-    staleTime: 60000,
-  });
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -200,17 +212,24 @@ export function ChatPage() {
               </Alert>
             )}
             {activeId && messagesQuery.isPending && <Skeleton label="Memuat pesan…" />}
-            {messages.map((m) => (
-              <div key={m.id} className={`max-w-[85%] rounded-card p-3 text-sm ${m.role === "user" ? "self-end bg-accent-soft" : "self-start bg-canvas"}`}>
-                <p className="mb-1 text-xs font-medium text-ink-soft">{m.role === "user" ? "Anda" : "AI"}{m.modelId ? ` · ${m.modelId}` : ""}</p>
-                <p className="whitespace-pre-wrap">{m.contentMd}</p>
-                {m.role === "assistant" && m.contextManifest && m.contextManifest.upstream.length > 0 && (
-                  <p className="mt-2 text-xs text-ink-soft">
-                    Konteks: {m.contextManifest.upstream.map((u) => `${docById.get(u.documentId)?.title ?? u.documentId} v${u.versionNo}`).join(", ")}
+            {messages.map((m) =>
+              m.role === "user" ? (
+                <div key={m.id} className="max-w-[85%] self-end rounded-card bg-accent-soft p-3 text-sm">
+                  <p className="mb-1 text-xs font-medium text-ink-soft">
+                    Anda{m.modelId ? ` · ${m.modelId}` : ""}
                   </p>
-                )}
-              </div>
-            ))}
+                  <p className="whitespace-pre-wrap">{m.contentMd}</p>
+                </div>
+              ) : (
+                <AssistantMessage
+                  key={m.id}
+                  contentMd={m.contentMd}
+                  modelId={m.modelId}
+                  contextLabel={m.contextManifest && m.contextManifest.upstream.length > 0 ? contextLabel(m.contextManifest.upstream) : null}
+                  onInsert={handleInsert}
+                />
+              ),
+            )}
             {streamingText && (
               <div className="max-w-[85%] self-start rounded-card bg-canvas p-3 text-sm">
                 <p className="mb-1 text-xs font-medium text-ink-soft">AI</p>
@@ -250,20 +269,14 @@ export function ChatPage() {
                 })}
               </div>
             </fieldset>
-            <input
-              aria-label="Override model (opsional)"
-              value={modelOverride}
-              onChange={(e) => setModelOverride(e.target.value)}
-              placeholder={selection ? `Model (default: ${selection.modelId})` : "Model"}
-              list="chat-model-presets"
-              className="w-full rounded-control border border-line bg-surface px-3 text-sm"
-            />
-            {modelsQuery.data?.modelsAvailable && modelsQuery.data.items.length > 0 && (
-              <datalist id="chat-model-presets">
-                {modelsQuery.data.items.map((m) => (
-                  <option key={m.id} value={m.modelId} />
-                ))}
-              </datalist>
+            {selection && (
+              <ModelPicker
+                providerId={selection.providerId}
+                defaultModelId={selection.modelId}
+                value={modelOverride}
+                onChange={setModelOverride}
+                disabled={streaming}
+              />
             )}
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium">Pesan</span>
@@ -296,6 +309,21 @@ export function ChatPage() {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={pendingInsert !== null}
+        title="Ganti draf pesan?"
+        onClose={() => setPendingInsert(null)}
+        confirmLabel="Ya, ganti"
+        onConfirm={() => {
+          if (pendingInsert !== null) setDraft(pendingInsert);
+          setPendingInsert(null);
+        }}
+      >
+        <p>
+          Draf yang sedang Anda tulis akan diganti dengan balasan AI. Lanjutkan?
+        </p>
+      </Dialog>
     </div>
   );
 }
