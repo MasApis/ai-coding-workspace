@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Button } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
@@ -131,10 +132,10 @@ export function ChatPage() {
   if (!projectId) {
     return (
       <div className="flex flex-col gap-4">
-        <Alert variant="empty" title="Belum ada konteks proyek">
+        <EmptyState title="Belum ada konteks proyek">
           Chat terikat pada proyek agar riwayat tersimpan dengan benar.
-        </Alert>
-        <Link to="/projects" className="text-sm text-accent hover:underline">
+        </EmptyState>
+        <Link to="/projects" className="text-sm text-ink hover:underline">
           ← Pilih proyek
         </Link>
       </div>
@@ -147,12 +148,18 @@ export function ChatPage() {
         <div>
           <h2 className="text-lg font-semibold">Chat AI</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            {selection ? `Model: ${modelOverride.trim() || selection.modelId}` : "Pilih atau mulai percakapan."}
+            {selection ? (
+              <>
+                Model: <span className="font-mono">{modelOverride.trim() || selection.modelId}</span>
+              </>
+            ) : (
+              "Pilih atau mulai percakapan."
+            )}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Link to="/settings" className="text-sm text-accent hover:underline">
-            Ubah default →
+          <Link to="/settings" className="text-sm text-ink hover:underline">
+            Ubah bawaan →
           </Link>
           {usage && (usage.requests > 0 || usage.errors > 0) && (
             <p className="text-xs text-ink-soft" role="status">
@@ -164,12 +171,12 @@ export function ChatPage() {
 
       {!selection && !selectionQuery.isPending && (
         <div className="mb-4">
-          <Alert variant="empty" title="Belum ada provider AI">
+          <EmptyState title="Belum ada provider AI">
             Hubungkan provider di Pengaturan agar Chat bisa digunakan.{" "}
-            <Link to="/settings" className="font-medium text-accent hover:underline">
+            <Link to="/settings" className="font-medium text-ink hover:underline">
               Buka Pengaturan →
             </Link>
-          </Alert>
+          </EmptyState>
         </div>
       )}
 
@@ -207,16 +214,23 @@ export function ChatPage() {
         <section aria-label="Pesan" className="flex min-h-[50vh] flex-col gap-3 rounded-card border border-line bg-surface p-4">
           <div ref={listRef} className="flex max-h-[50vh] min-h-[30vh] flex-col gap-3 overflow-y-auto" aria-live="polite">
             {!activeId && messages.length === 0 && !streamingText && (
-              <Alert variant="empty" title="Mulai percakapan">
+              <EmptyState title="Mulai percakapan">
                 Tulis pesan pertama di bawah. Percakapan baru dibuat otomatis.
-              </Alert>
+              </EmptyState>
             )}
             {activeId && messagesQuery.isPending && <Skeleton label="Memuat pesan…" />}
             {messages.map((m) =>
               m.role === "user" ? (
                 <div key={m.id} className="max-w-[85%] self-end rounded-card bg-accent-soft p-3 text-sm">
                   <p className="mb-1 text-xs font-medium text-ink-soft">
-                    Anda{m.modelId ? ` · ${m.modelId}` : ""}
+                    Anda
+                    {m.modelId ? (
+                      <>
+                        {" "}· <span className="font-mono">{m.modelId}</span>
+                      </>
+                    ) : (
+                      ""
+                    )}
                   </p>
                   <p className="whitespace-pre-wrap">{m.contentMd}</p>
                 </div>

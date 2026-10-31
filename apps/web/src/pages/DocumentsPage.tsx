@@ -5,10 +5,10 @@ import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
 import { Skeleton } from "../components/Skeleton.js";
 import type { ProjectOutletContext } from "../components/project/ProjectLayout.js";
+import { PLAN_STEPS } from "../components/planning/StepsList.js";
 import { DOCUMENT_LABELS, typeToSlug } from "../lib/documentTypes.js";
 import { listDocuments } from "../lib/documents.js";
 import { formatDateTime } from "../lib/format.js";
-import { PLAN_STEPS } from "../components/planning/StepsList.js";
 
 function statusBadge(doc: DocumentDto) {
   if (doc.stale) return <Badge variant="warning">Usang</Badge>;
@@ -35,7 +35,7 @@ export function DocumentsPage() {
         </div>
       </div>
 
-      {docsQuery.isPending && <Skeleton label="Memuat dokumen…" />}
+      {docsQuery.isPending && <Skeleton label="Memuat dokumen…" lines={PLAN_STEPS.length} />}
 
       {docsQuery.isError && (
         <Alert variant="error" title="Dokumen tidak dapat dimuat">
@@ -52,20 +52,25 @@ export function DocumentsPage() {
                 <div className="min-w-0 flex-1">
                   <Link
                     to={`/projects/${project.id}/planning/${typeToSlug(step.type)}`}
-                    className="font-medium text-ink hover:text-accent hover:underline"
+                    className="font-medium text-ink hover:text-ink hover:underline"
                   >
                     {step.label}
                   </Link>
                   <p className="mt-1 text-xs text-ink-soft">
-                    {doc
-                      ? `Versi ${doc.currentVersionNo ?? "—"} · Diubah ${formatDateTime(doc.updatedAt)}`
-                      : "Belum dibuat"}
+                    {doc ? (
+                      <>
+                        Versi <span className="font-mono">{doc.currentVersionNo ?? "—"}</span> · Diubah{" "}
+                        <span className="font-mono">{formatDateTime(doc.updatedAt)}</span>
+                      </>
+                    ) : (
+                      "Belum dibuat"
+                    )}
                   </p>
                 </div>
                 {doc ? statusBadge(doc) : <Badge variant="neutral">Belum ada</Badge>}
                 <Link
                   to={`/projects/${project.id}/planning/${typeToSlug(step.type)}`}
-                  className="text-sm text-ink-soft hover:text-ink hover:underline"
+                  className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink hover:underline"
                 >
                   {doc ? "Buka" : "Buat"}
                 </Link>

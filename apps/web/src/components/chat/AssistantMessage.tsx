@@ -33,7 +33,15 @@ export function AssistantMessage({
 
   return (
     <div className="max-w-[85%] self-start rounded-card bg-canvas p-3 text-sm">
-      <p className="mb-1 text-xs font-medium text-ink-soft">AI{modelId ? ` · ${modelId}` : ""}</p>
+      <p className="mb-1 text-xs font-medium text-ink-soft">
+        AI{modelId ? (
+          <>
+            {" "}· <span className="font-mono">{modelId}</span>
+          </>
+        ) : (
+          ""
+        )}
+      </p>
       <Markdown source={contentMd} label="Balasan AI" />
       {contextLabel && <p className="mt-2 text-xs text-ink-soft">Konteks: {contextLabel}</p>}
       <div className="mt-2 flex flex-wrap gap-3 text-xs">

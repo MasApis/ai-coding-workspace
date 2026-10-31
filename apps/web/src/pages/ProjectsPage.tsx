@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ProjectDto } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Badge } from "../components/Badge.js";
 import { Button } from "../components/Button.js";
 import { ButtonLink } from "../components/ButtonLink.js";
@@ -104,9 +105,9 @@ export function ProjectsPage() {
       )}
 
       {!isPending && !isError && visible.length === 0 && (
-        <Alert variant="empty" title={data?.length === 0 ? "Belum ada proyek" : "Tidak ada hasil"}>
+        <EmptyState title={data?.length === 0 ? "Belum ada proyek" : "Tidak ada hasil"}>
           {data?.length === 0 ? "Buat proyek pertama Anda untuk mulai merencanakan." : "Ubah kata kunci atau filter status."}
-        </Alert>
+        </EmptyState>
       )}
 
       {!isPending && !isError && visible.length > 0 && (
@@ -114,11 +115,12 @@ export function ProjectsPage() {
           {visible.map((project) => (
             <li key={project.id} className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-4">
               <div className="min-w-0 flex-1">
-                <Link to={`/projects/${project.id}`} className="font-medium text-ink hover:text-accent hover:underline">
+                <Link to={`/projects/${project.id}`} className="font-medium text-ink hover:text-ink hover:underline">
                   {project.name}
                 </Link>
                 <p className="mt-1 text-xs text-ink-soft">
-                  {project.slug} · Diubah {formatDateTime(project.updatedAt)}
+                  <span className="font-mono">{project.slug}</span> · Diubah{" "}
+                  <span className="font-mono">{formatDateTime(project.updatedAt)}</span>
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge variant={stageTone(project.summary.stage, project.summary.documents.stale > 0)}>
@@ -134,7 +136,7 @@ export function ProjectsPage() {
                   )}
                 </div>
               </div>
-              <Link to={nextActionHref(project.id, project.summary.nextAction)} className="text-sm text-accent hover:underline">
+              <Link to={nextActionHref(project.id, project.summary.nextAction)} className="text-sm text-ink hover:underline">
                 {nextActionLabel(project.summary.nextAction)} →
               </Link>
               <div className="flex gap-2">

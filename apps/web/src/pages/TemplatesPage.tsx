@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Badge } from "../components/Badge.js";
 import { Button, buttonClasses } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
@@ -66,9 +66,9 @@ export function TemplatesPage() {
       </div>
 
       {visible.length === 0 && (
-        <Alert variant="empty" title="Tidak ada template yang cocok">
+        <EmptyState title="Tidak ada template yang cocok">
           Ubah kata kunci atau filter stack.
-        </Alert>
+        </EmptyState>
       )}
 
       <ul className="grid gap-4 md:grid-cols-2" aria-label={`Katalog template (${visible.length})`}>
@@ -96,7 +96,7 @@ export function TemplatesPage() {
                 <ul className="mt-1 flex flex-col gap-1">
                   {t.variables.map((v) => (
                     <li key={v.name} className="text-xs text-ink-soft">
-                      <span className="font-mono">{v.name}</span> — {v.description} (default: <span className="font-mono">{v.defaultValue}</span>)
+                      <span className="font-mono">{v.name}</span> — {v.description} (bawaan: <span className="font-mono">{v.defaultValue}</span>)
                     </li>
                   ))}
                 </ul>
@@ -129,7 +129,7 @@ export function TemplatesPage() {
           {active?.variables.map((v) => (
             <TextInput
               key={v.name}
-              label={`${v.name} (default: ${v.defaultValue})`}
+              label={`${v.name} (bawaan: ${v.defaultValue})`}
               value={variables[v.name] ?? ""}
               onChange={(e) => setVariables((prev) => ({ ...prev, [v.name]: e.target.value }))}
               placeholder={v.description}
@@ -148,7 +148,7 @@ export function TemplatesPage() {
             <div className="rounded-control border border-line bg-canvas p-3 text-sm">
               <p>
                 Proyek dibuat:{" "}
-                <Link to={`/projects/${result.projectId}`} className="font-medium text-accent hover:underline">
+                <Link to={`/projects/${result.projectId}`} className="font-medium text-ink hover:underline">
                   buka proyek →
                 </Link>
               </p>

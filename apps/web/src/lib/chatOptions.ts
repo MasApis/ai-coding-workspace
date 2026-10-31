@@ -11,7 +11,7 @@ export interface ModelOption {
 // The app never adds a model id the provider did not report.
 export function modelOptions(models: ProviderModelInfo[], defaultModelId: string): ModelOption[] {
   const seen = new Set<string>();
-  const options: ModelOption[] = [{ value: "", label: `Default (${defaultModelId})` }];
+  const options: ModelOption[] = [{ value: "", label: `Bawaan (${defaultModelId})` }];
   for (const model of models) {
     if (!model.id || seen.has(model.id)) continue;
     seen.add(model.id);

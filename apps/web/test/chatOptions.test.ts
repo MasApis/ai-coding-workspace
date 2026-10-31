@@ -10,6 +10,7 @@ describe("modelOptions", () => {
   it("starts with the resolved default and collapses duplicates", () => {
     const options = modelOptions([model("a", "Alpha"), model("a"), model("b")], "b");
     expect(options.map((o) => o.value)).toEqual(["", "a", "b"]);
+    expect(options[0]?.label).toBe("Bawaan (b)");
     expect(options[1]?.label).toBe("Alpha — a");
   });
 

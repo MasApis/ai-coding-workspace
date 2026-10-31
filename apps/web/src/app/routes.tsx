@@ -1,7 +1,6 @@
 import type { RouteObject } from "react-router";
 import { AppShell } from "../components/layout/AppShell.js";
 import { ProjectLayout } from "../components/project/ProjectLayout.js";
-import { ComponentDemo } from "../demo/ComponentDemo.js";
 import { ChatPage } from "../pages/ChatPage.js";
 import { DocumentsPage } from "../pages/DocumentsPage.js";
 import { ExportsPage } from "../pages/ExportsPage.js";
@@ -30,7 +29,6 @@ export const routePaths = [
   "/projects/:projectId/design",
   "/templates",
   "/settings",
-  "/demo",
   "*",
 ];
 
@@ -59,7 +57,6 @@ export const routes: RouteObject[] = [
       },
       { path: "/templates", element: <TemplatesPage /> },
       { path: "/settings", element: <SettingsPage /> },
-      { path: "/demo", element: <ComponentDemo /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

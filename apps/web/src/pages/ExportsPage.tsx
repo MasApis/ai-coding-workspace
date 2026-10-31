@@ -56,7 +56,7 @@ export function ExportsPage() {
                 <li key={d.id} className="flex items-center gap-2 text-sm">
                   <Badge variant="success">Disetujui</Badge>
                   <span>{d.title}</span>
-                  <span className="text-xs text-ink-soft">v{d.currentVersionNo}</span>
+                  <span className="font-mono text-xs text-ink-soft">v{d.currentVersionNo}</span>
                 </li>
               ))}
               {pending.map((d) => (

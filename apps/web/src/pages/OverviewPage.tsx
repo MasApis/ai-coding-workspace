@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Badge } from "../components/Badge.js";
 import { Button } from "../components/Button.js";
 import { ButtonLink } from "../components/ButtonLink.js";
@@ -35,12 +36,12 @@ export function OverviewPage() {
       )}
 
       {!isPending && !isError && data?.length === 0 && (
-        <Alert variant="empty" title="Belum ada proyek aktif">
+        <EmptyState title="Belum ada proyek aktif">
           <p>Buat proyek pertama Anda untuk mulai merencanakan.</p>
           <div className="mt-3">
             <ButtonLink to="/projects/new">Buat proyek baru</ButtonLink>
           </div>
-        </Alert>
+        </EmptyState>
       )}
 
       {!isPending && !isError && data && data.length > 0 && (
@@ -51,17 +52,19 @@ export function OverviewPage() {
               <li key={project.id} className="rounded-card border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <Link to={`/projects/${project.id}`} className="font-medium text-ink hover:text-accent hover:underline">
+                    <Link to={`/projects/${project.id}`} className="font-medium text-ink hover:text-ink hover:underline">
                       {project.name}
                     </Link>
-                    <p className="mt-1 text-xs text-ink-soft">Diubah {formatDateTime(project.updatedAt)}</p>
+                    <p className="mt-1 text-xs text-ink-soft">
+                      Diubah <span className="font-mono">{formatDateTime(project.updatedAt)}</span>
+                    </p>
                   </div>
                   <Badge variant={stageTone(project.summary.stage, project.summary.documents.stale > 0)}>
                     {stageLabel(project.summary.stage)}
                   </Badge>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Link to={nextActionHref(project.id, project.summary.nextAction)} className="text-sm text-accent hover:underline">
+                  <Link to={nextActionHref(project.id, project.summary.nextAction)} className="text-sm text-ink hover:underline">
                     {nextActionLabel(project.summary.nextAction)} →
                   </Link>
                   {project.summary.documents.stale > 0 && (
@@ -72,7 +75,7 @@ export function OverviewPage() {
             ))}
           </ul>
           <div className="mt-2">
-            <Link to="/projects" className="text-sm text-accent hover:underline">
+            <Link to="/projects" className="text-sm text-ink hover:underline">
               Lihat semua proyek →
             </Link>
           </div>

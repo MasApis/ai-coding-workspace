@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { DocumentDto, DocumentVersionDto } from "@workspace/shared";
 import { Alert } from "../Alert.js";
+import { EmptyState } from "../EmptyState.js";
 import { Badge } from "../Badge.js";
 import { Button } from "../Button.js";
 import { Dialog } from "../Dialog.js";
@@ -65,9 +66,9 @@ export function EditorPane({
 
   if (!doc) {
     return (
-      <Alert variant="empty" title="Dokumen belum ada">
+      <EmptyState title="Dokumen belum ada">
         Buat kosong atau generate dengan AI dari panel samping.
-      </Alert>
+      </EmptyState>
     );
   }
 
@@ -89,7 +90,7 @@ export function EditorPane({
 
         <div className="flex flex-wrap gap-2 sm:ml-auto">
           <Button disabled={!dirty || readOnly || saving} onClick={() => setReviewOpen(true)}>
-            {saving ? "Menyimpan…" : approved ? "Buat draf baru dari approved" : "Simpan versi baru"}
+            {saving ? "Menyimpan…" : approved ? "Buat draf baru dari versi disetujui" : "Simpan versi baru"}
           </Button>
           {doc.approvalState === "draft" && (
             <Button variant="secondary" onClick={onReview}>
@@ -175,7 +176,7 @@ export function EditorPane({
       >
         <p className="text-ink-soft">
           {stats.added} baris ditambah · {stats.removed} baris dihapus
-          {approved ? " · versi approved saat ini tetap tersimpan" : ""}
+          {approved ? " · versi yang disetujui saat ini tetap tersimpan" : ""}
         </p>
         <div ref={diffRef} className="mt-3 max-h-72 overflow-auto rounded-control border border-line font-mono text-xs">
           {rows.map((row, index) => (

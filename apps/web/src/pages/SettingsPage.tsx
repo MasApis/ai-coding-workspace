@@ -3,11 +3,13 @@ import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ImportResult, ProviderDto } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Badge } from "../components/Badge.js";
 import { Button, buttonClasses } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { Select, TextInput } from "../components/TextField.js";
+import { toast } from "../components/Toast.js";
 import { ProviderDialog, type ProviderFormValues } from "../components/settings/ProviderDialog.js";
 import { ApiError } from "../lib/api.js";
 import { backupDownloadUrl, friendlyBackupError, importBackup } from "../lib/backup.js";
@@ -98,7 +100,7 @@ function BackupSection() {
       {importResult && (
         <Alert variant="info" title="Impor selesai">
           Proyek baru:{" "}
-          <Link to={`/projects/${importResult.projectId}`} className="font-medium text-accent hover:underline">
+          <Link to={`/projects/${importResult.projectId}`} className="font-medium text-ink hover:underline">
             {importResult.projectSlug} →
           </Link>{" "}
           ({importResult.counts.documents} dokumen, {importResult.counts.messages} pesan)
@@ -245,13 +247,20 @@ export function SettingsPage() {
 
   const defaultMutation = useMutation({
     mutationFn: ({ providerId, modelId }: { providerId: string; modelId: string }) => setGlobalPreference(providerId, modelId),
-    onSuccess: () => void refresh(),
-    onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan default gagal."),
+    onSuccess: () => {
+      void refresh();
+      setDefaultModel("");
+      toast("Bawaan global tersimpan.");
+    },
+    onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan bawaan gagal."),
   });
 
   const fallbackMutation = useMutation({
     mutationFn: ({ providerId, modelId }: { providerId: string; modelId: string }) => setFallback(providerId, modelId),
-    onSuccess: () => void refresh(),
+    onSuccess: () => {
+      void refresh();
+      toast("Provider cadangan tersimpan.");
+    },
     onError: (err) => setFormError(err instanceof ApiError ? friendlyProviderError(err.code, err.message) : "Penyimpanan fallback gagal."),
   });
 
@@ -298,9 +307,9 @@ export function SettingsPage() {
         )}
 
         {!providersQuery.isPending && !providersQuery.isError && providers.length === 0 && (
-          <Alert variant="empty" title="Belum ada provider">
+          <EmptyState title="Belum ada provider">
             Tambahkan provider AI agar Planning dan Chat bisa digunakan. Kunci hanya tersimpan di server lokal dan tidak pernah ditampilkan kembali.
-          </Alert>
+          </EmptyState>
         )}
 
         {providers.length > 0 && (
@@ -311,7 +320,7 @@ export function SettingsPage() {
                 <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-4">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">
-                      {p.label} {isDefault && <span className="text-xs font-normal text-accent">(default)</span>}
+                      {p.label} {isDefault && <span className="text-xs font-normal text-ink-soft">(bawaan)</span>}
                     </p>
                     <p className="mt-1 flex flex-wrap gap-1 text-xs text-ink-soft">
                       <Badge variant={p.enabled ? "accent" : "neutral"}>{p.protocol}</Badge>
@@ -355,14 +364,14 @@ export function SettingsPage() {
               if (providerId && modelId) defaultMutation.mutate({ providerId, modelId });
             }}
           >
-            <h3 className="text-sm font-semibold">Default global</h3>
+            <h3 className="text-sm font-semibold">Bawaan global</h3>
             {preference ? (
               <p className="text-sm text-ink-soft">
                 Aktif: <span className="font-mono">{preference.modelId}</span> pada provider{" "}
                 <span className="font-mono">{providers.find((p) => p.id === preference.providerId)?.label ?? preference.providerId}</span>
               </p>
             ) : (
-              <p className="text-sm text-ink-soft">Belum ada default. Planning dan Chat membutuhkannya.</p>
+              <p className="text-sm text-ink-soft">Belum ada bawaan. Planning dan Chat membutuhkannya.</p>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label="Provider" name="provider" defaultValue={preference?.providerId ?? ""}>
@@ -387,7 +396,7 @@ export function SettingsPage() {
             </div>
             <div>
               <Button type="submit" variant="secondary" disabled={!defaultModel.trim()}>
-                Simpan default
+                Simpan bawaan
               </Button>
             </div>
           </form>

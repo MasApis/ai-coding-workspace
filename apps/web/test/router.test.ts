@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { routePaths } from "../src/app/routes.js";
 import { buildCrumbs } from "../src/components/layout/breadcrumbs.js";
 
-// Tech Spec v1.1 section 4 global routes (+ /demo kept from TICKET-003).
+// Tech Spec v1.1 section 4 global routes.
 const EXPECTED_PATHS = [
   "/",
   "/projects",
@@ -17,7 +17,6 @@ const EXPECTED_PATHS = [
   "/projects/:projectId/design",
   "/templates",
   "/settings",
-  "/demo",
   "*",
 ];
 

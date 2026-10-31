@@ -2,13 +2,15 @@ import { useEffect, useId, useState } from "react";
 import { useBlocker, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "../components/Alert.js";
+import { EmptyState } from "../components/EmptyState.js";
 import { Button } from "../components/Button.js";
 import { Dialog } from "../components/Dialog.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { TabList, tabPanelProps } from "../components/Tabs.js";
+import { toast } from "../components/Toast.js";
 import { AIPanel } from "../components/planning/AIPanel.js";
 import { EditorPane } from "../components/planning/EditorPane.js";
-import { StepsList } from "../components/planning/StepsList.js";
+import { StepsList, PLAN_STEPS } from "../components/planning/StepsList.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { slugToType, DOCUMENT_LABELS } from "../lib/documentTypes.js";
 import { ApiError } from "../lib/api.js";
@@ -83,7 +85,10 @@ export function PlanningPage() {
       if (!doc || !projectId) throw new Error("no document");
       return createVersion(doc.id, { contentMd: content, fromApproved });
     },
-    onSuccess: () => void refresh(),
+    onSuccess: () => {
+      void refresh();
+      toast("Versi baru tersimpan.");
+    },
   });
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -103,6 +108,7 @@ export function PlanningPage() {
     onSuccess: () => {
       setApproveOpen(false);
       void refresh();
+      toast("Dokumen disetujui.");
     },
   });
 
@@ -132,7 +138,7 @@ export function PlanningPage() {
   }
 
   const stepsPane = docsQuery.isPending ? (
-    <Skeleton label="Memuat langkah…" />
+    <Skeleton label="Memuat langkah…" lines={PLAN_STEPS.length} />
   ) : (
     <StepsList projectId={projectId} docs={docs} selected={type} />
   );
@@ -147,9 +153,9 @@ export function PlanningPage() {
       )}
       {!docsQuery.isPending && !docsQuery.isError && !doc && (
         <div className="flex flex-col gap-3">
-          <Alert variant="empty" title={`${DOCUMENT_LABELS[type]} belum ada`}>
+          <EmptyState title={`${DOCUMENT_LABELS[type]} belum ada`}>
             Buat dokumen kosong lalu tulis manual, atau generate dengan AI.
-          </Alert>
+          </EmptyState>
           <div>
             <Button variant="secondary" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               {createMutation.isPending ? "Membuat…" : "Buat kosong"}
@@ -219,7 +225,7 @@ export function PlanningPage() {
         confirmDisabled={approveMutation.isPending}
         onConfirm={() => approveMutation.mutate()}
       >
-        <p>Versi terkini akan dikunci sebagai approved. Perubahan berikutnya memerlukan draf baru yang eksplisit.</p>
+        <p>Versi terkini akan dikunci sebagai versi disetujui. Perubahan berikutnya memerlukan draf baru yang eksplisit.</p>
         {approveMutation.error && (
           <p role="alert" className="mt-2 text-sm text-error">
             {approveMutation.error instanceof ApiError ? friendlyDocumentError(approveMutation.error) : "Persetujuan gagal."}

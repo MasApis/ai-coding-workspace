@@ -40,7 +40,7 @@ export function StepsList({
             key={step.type}
             to={`/projects/${projectId}/planning/${typeToSlug(step.type)}`}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center justify-between gap-2 rounded-control px-3 py-2 text-sm ${
+            className={`flex min-h-11 items-center justify-between gap-2 rounded-control px-3 py-2 text-sm ${
               active ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-canvas"
             }`}
           >

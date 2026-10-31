@@ -3,11 +3,14 @@ import { Outlet } from "react-router";
 import { Header } from "./Header.js";
 import { MobileNav } from "./MobileNav.js";
 import { Sidebar } from "./Sidebar.js";
+import { Toaster } from "../Toast.js";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle.js";
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  useDocumentTitle();
 
   return (
     <div className="flex min-h-screen bg-canvas text-ink">
@@ -25,6 +28,7 @@ export function AppShell() {
         </main>
       </div>
       <MobileNav open={navOpen} onClose={() => setNavOpen(false)} triggerRef={menuButtonRef} />
+      <Toaster />
     </div>
   );
 }

@@ -25,6 +25,14 @@
   --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
+/* Page headings render at 650 (spec §3): the offline stack has no bundled
+   Inter Variable, so system-ui falls back and variable-aware engines pick
+   the exact weight. Plain element rule on purpose: no Tailwind weight
+   class may override it. */
+h1 {
+  font-weight: 650;
+}
+
 body {
   background-color: var(--color-canvas);
   color: var(--color-ink);

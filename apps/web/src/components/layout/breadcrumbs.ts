@@ -16,7 +16,6 @@ const STATIC_LABELS: Record<string, string> = {
   settings: "Pengaturan",
   design: "Desain",
   templates: "Templat",
-  demo: "Demo",
 };
 
 const PROJECT_CHILD_LABELS: Record<string, string> = {

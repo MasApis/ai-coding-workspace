@@ -55,7 +55,7 @@ export function friendlyDocumentError(err: unknown): string {
       case "NETWORK_ERROR":
         return "Tidak dapat menghubungi server lokal.";
       case "APPROVED_LOCKED":
-        return "Dokumen sudah approved. Buat draf baru secara eksplisit untuk mengubahnya.";
+        return "Dokumen sudah disetujui. Buat draf baru secara eksplisit untuk mengubahnya.";
       case "INVALID_STATE":
         return "Aksi tidak sesuai status dokumen saat ini.";
       case "DOCUMENT_TYPE_TAKEN":

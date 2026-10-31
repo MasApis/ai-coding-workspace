@@ -31,7 +31,7 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
               <Link
                 to={`${base}${tab.path}`}
                 aria-current={active ? "page" : undefined}
-                className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 text-sm ${
+                className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 text-sm max-md:min-h-11 ${
                   active ? "border-accent font-medium text-accent" : "border-transparent text-ink-soft hover:text-ink"
                 }`}
               >

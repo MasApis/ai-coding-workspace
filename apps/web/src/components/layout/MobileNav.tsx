@@ -83,7 +83,7 @@ export function MobileNav({ open, onClose, triggerRef }: { open: boolean; onClos
               end={item.end}
               onClick={onClose}
               className={({ isActive }) =>
-                `rounded-control px-3 text-sm font-medium ${
+                `flex min-h-11 items-center rounded-control px-3 text-sm font-medium ${
                   isActive ? "bg-accent-soft text-accent" : "text-ink-soft hover:bg-canvas hover:text-ink"
                 }`
               }

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Alert } from "../Alert.js";
+import { EmptyState } from "../EmptyState.js";
 import { Button } from "../Button.js";
 import { Skeleton } from "../Skeleton.js";
 import { TextArea } from "../TextField.js";
@@ -109,11 +110,11 @@ export function AIPanel({
       <h3 className="text-sm font-semibold">Panel AI</h3>
       {selectionQuery.isPending && <Skeleton label="Memeriksa provider…" />}
       {!selectionQuery.isPending && !selection && (
-        <Alert variant="empty" title="Belum ada provider">
-          <Link to="/settings" className="font-medium text-accent hover:underline">
+        <EmptyState title="Belum ada provider">
+          <Link to="/settings" className="font-medium text-ink hover:underline">
             Hubungkan di Pengaturan →
           </Link>
-        </Alert>
+        </EmptyState>
       )}
       {selection && (
         <p className="text-xs text-ink-soft">
@@ -133,7 +134,7 @@ export function AIPanel({
           {asking ? "Meminta…" : "Minta pertanyaan"}
         </Button>
       </div>
-      {approved && <p className="text-xs text-ink-soft">Dokumen approved: generate akan membuat draf baru.</p>}
+      {approved && <p className="text-xs text-ink-soft">Dokumen disetujui: generate akan membuat draf baru.</p>}
       {progress && (
         <p role="status" className="text-xs">
           {progress.section} ({progress.done}/{progress.total})

@@ -50,7 +50,7 @@ export function ProjectLayout() {
       <header className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold break-words">{project.name}</h1>
+            <h1 className="break-words text-2xl">{project.name}</h1>
             {project.description && <p className="mt-1 text-sm text-ink-soft">{project.description}</p>}
           </div>
           <ButtonLink to={nextActionHref(project.id, summary.nextAction)}>{nextActionLabel(summary.nextAction)}</ButtonLink>
