@@ -49,6 +49,22 @@ export interface ConnectionTest {
   modelsAvailable: boolean;
 }
 
+export interface EffectiveSelection {
+  providerId: string;
+  modelId: string;
+  scope: "explicit" | "project" | "global";
+}
+
+export async function getEffectiveSelection(projectId?: string): Promise<EffectiveSelection | null> {
+  const path = projectId ? `/ai/resolved?projectId=${encodeURIComponent(projectId)}` : "/ai/resolved";
+  try {
+    return await request<EffectiveSelection>(path);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "NO_PROVIDER_CONFIGURED") return null;
+    throw err;
+  }
+}
+
 export function testProvider(id: string, modelId?: string): Promise<ConnectionTest> {
   return request<ConnectionTest>(`/providers/${encodeURIComponent(id)}/test`, {
     method: "POST",

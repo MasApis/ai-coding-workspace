@@ -33,6 +33,37 @@ async function loadConfig(db: AppDatabase, key: Buffer, providerId: string): Pro
   };
 }
 
+export interface EffectiveSelection {
+  providerId: string;
+  modelId: string;
+  scope: "explicit" | "project" | "global";
+}
+
+// Single routing decision shared by Chat, Planning, and the UI: explicit
+// body values win, then project preference, then global preference.
+export async function getEffectiveSelection(
+  db: AppDatabase,
+  input: { providerId?: string; modelId?: string; projectId?: string },
+): Promise<EffectiveSelection | null> {
+  if (input.providerId && input.modelId) {
+    return { providerId: input.providerId, modelId: input.modelId, scope: "explicit" };
+  }
+  if (input.projectId) {
+    try {
+      const pref = await getPreferences(db, "project", input.projectId);
+      return { providerId: pref.providerId, modelId: input.modelId ?? pref.modelId, scope: "project" };
+    } catch {
+      // Fall through to the global preference.
+    }
+  }
+  try {
+    const pref = await getPreferences(db, "global", null);
+    return { providerId: pref.providerId, modelId: input.modelId ?? pref.modelId, scope: "global" };
+  } catch {
+    return null;
+  }
+}
+
 // Explicit body selection wins; otherwise project preference, then global
 // preference. No silent default model is ever invented.
 export async function resolveChatTarget(

@@ -4,7 +4,7 @@ import { z } from "@workspace/shared";
 import { chatStreamRequestSchema } from "@workspace/shared";
 import type { AppDatabase } from "../db/connection.js";
 import { GatewayError, gatewayHttpStatus } from "../ai/errors.js";
-import { resolveChatTarget, streamChatEvents } from "../ai/gateway.js";
+import { getEffectiveSelection, resolveChatTarget, streamChatEvents } from "../ai/gateway.js";
 import { getAdapter } from "../ai/registry.js";
 import { readCredential } from "../services/providerService.js";
 import { HttpError, errorBody } from "../http/errors.js";
@@ -67,6 +67,20 @@ export async function aiRoutes(app: FastifyInstance, db: AppDatabase, key: Buffe
       } catch {
         return reply.send({ data: { items: [], modelsAvailable: false } });
       }
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/api/ai/resolved", async (request, reply) => {
+    try {
+      const query = request.query as { projectId?: unknown };
+      const projectId = typeof query.projectId === "string" && query.projectId.length > 0 ? query.projectId : undefined;
+      const selection = await getEffectiveSelection(db, { projectId });
+      if (!selection) {
+        return reply.code(404).send(errorBody("NO_PROVIDER_CONFIGURED", "no provider configured; add one in Settings first"));
+      }
+      return reply.send({ data: selection });
     } catch (err) {
       return sendError(reply, err);
     }
