@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProviderDto } from "@workspace/shared";
+import type { ImportResult, ProviderDto } from "@workspace/shared";
 import { Alert } from "../components/Alert.js";
 import { Badge } from "../components/Badge.js";
 import { Button } from "../components/Button.js";
@@ -9,6 +10,8 @@ import { Skeleton } from "../components/Skeleton.js";
 import { Select, TextInput } from "../components/TextField.js";
 import { ProviderDialog, type ProviderFormValues } from "../components/settings/ProviderDialog.js";
 import { ApiError } from "../lib/api.js";
+import { backupDownloadUrl, friendlyBackupError, importBackup } from "../lib/backup.js";
+import { useProjects } from "../hooks/useProjects.js";
 import {
   createProvider,
   deleteProvider,
@@ -18,7 +21,96 @@ import {
   setGlobalPreference,
   updateProvider,
 } from "../lib/providers.js";
-import { PageHeader, TicketNote } from "./PageBits.js";
+import { PageHeader } from "./PageBits.js";
+
+function BackupSection() {
+  const { data: projects } = useProjects("all");
+  const [projectId, setProjectId] = useState("");
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleFile(file: File | undefined): Promise<void> {
+    setImportError(null);
+    setImportResult(null);
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError("Berkas terlalu besar (maks 10 MB).");
+      return;
+    }
+    setImporting(true);
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const result = await importBackup(parsed as never);
+      setImportResult(result);
+    } catch (err) {
+      setImportError(friendlyBackupError(err));
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+      <p className="text-sm text-ink-soft">
+        Backup berisi data proyek (dokumen, tugas, percakapan, keputusan). Kredensial, konfigurasi provider global, dan berkas ekspor/prototipe tidak ikut.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select label="Proyek untuk diekspor" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <option value="" disabled>
+            Pilih proyek…
+          </option>
+          {(projects ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+        <div className="flex items-end gap-2">
+          {projectId && (
+            <a
+              href={backupDownloadUrl(projectId)}
+              download
+              className="inline-flex min-h-[40px] items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas"
+            >
+              Unduh backup
+            </a>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium" htmlFor="backup-file">
+          Impor backup (JSON)
+        </label>
+        <input id="backup-file" ref={fileRef} type="file" accept="application/json,.json" disabled={importing} onChange={(e) => void handleFile(e.target.files?.[0])} className="text-sm" />
+      </div>
+      {importing && <p className="text-sm text-ink-soft">Mengimpor…</p>}
+      {importError && (
+        <Alert variant="error" title="Impor gagal">
+          {importError}
+        </Alert>
+      )}
+      {importResult && (
+        <Alert variant="info" title="Impor selesai">
+          Proyek baru:{" "}
+          <Link to={`/projects/${importResult.projectId}`} className="font-medium text-accent hover:underline">
+            {importResult.projectSlug} →
+          </Link>{" "}
+          ({importResult.counts.documents} dokumen, {importResult.counts.messages} pesan)
+          {importResult.warnings.length > 0 && (
+            <ul className="mt-1 list-disc pl-5">
+              {importResult.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
+        </Alert>
+      )}
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
@@ -211,7 +303,7 @@ export function SettingsPage() {
 
       <section aria-labelledby="s-storage" className="flex flex-col gap-4">
         <h2 id="s-storage" className="text-lg font-semibold">Penyimpanan</h2>
-        <TicketNote ticket="TICKET-021">Manajemen direktori data, backup/restore, dan aksi hapus data.</TicketNote>
+        <BackupSection />
       </section>
 
       <ProviderDialog
