@@ -1,3 +1,5 @@
+import type { GatewayErrorCode } from "../ai/errors.js";
+
 export type ErrorCode =
   | "VALIDATION_ERROR"
   | "PROJECT_NOT_FOUND"
@@ -7,6 +9,8 @@ export type ErrorCode =
   | "PROVIDER_DISABLED"
   | "PREFERENCE_NOT_FOUND"
   | "INTERNAL_ERROR";
+
+export type ApiErrorCode = ErrorCode | GatewayErrorCode;
 
 const STATUS: Record<ErrorCode, number> = {
   VALIDATION_ERROR: 422,
@@ -34,7 +38,7 @@ export class HttpError extends Error {
   }
 }
 
-export function errorBody(code: ErrorCode, message: string, details?: unknown): object {
+export function errorBody(code: ApiErrorCode, message: string, details?: unknown): object {
   return details === undefined
     ? { error: { code, message } }
     : { error: { code, message, details } };
