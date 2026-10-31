@@ -1,0 +1,10 @@
+{
+  "name": "@workspace/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"web dev not implemented yet (see TICKET-003/004)\"",
+    "build": "tsc --noEmit -p tsconfig.json"
+  }
+}

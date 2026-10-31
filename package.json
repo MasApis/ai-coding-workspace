@@ -1,0 +1,22 @@
+{
+  "name": "ai-coding-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm --recursive build",
+    "test": "vitest run",
+    "test:e2e": "echo \"E2E not implemented yet (TICKET-001 foundation only)\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:migrate": "echo \"DB migrations not implemented yet (see TICKET-002)\" && exit 1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

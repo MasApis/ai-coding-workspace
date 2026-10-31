@@ -1,0 +1,10 @@
+{
+  "name": "@workspace/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"api dev not implemented yet (see TICKET-006)\"",
+    "build": "tsc --noEmit -p tsconfig.json"
+  }
+}
